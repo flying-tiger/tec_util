@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+import argparse
+import logging
+import os
+import sys
+import tec_util
+
+logging.basicConfig(
+    stream=sys.stdout,
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+)
+LOG = logging.getLogger(__name__)
+
+
+#-------------------------------------------------------------------------------
+# Subcommmands
+#-------------------------------------------------------------------------------
+def slice(args):
+    ''' Extract slices from dataset of surfaces zones. '''
+    tec_util.slice_surfaces(
+        args.slice_file,
+        args.datafile_in,
+        args.datafile_out
+    )
+
+def export(args):
+    ''' Export all pages in a layout to <page.name>.png '''
+    tec_util.export_pages(
+        args.layout_file,
+        args.output_dir,
+        args.width,
+        args.supersample,
+        args.rescale,
+        args.num_contour,
+    )
+
+
+#-------------------------------------------------------------------------------
+# Main Program
+#-------------------------------------------------------------------------------
+def build_parser():
+    ''' Construct the command line argument parser '''
+
+    # Main parser
+    parser = argparse.ArgumentParser(
+        description = "Utilities for working with Tecplot data files.",
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        help = 'show detailed output log',
+        action = 'store_const',
+        dest = 'loglevel',
+        const = logging.INFO,
+        default = logging.WARNING,
+    )
+    parser.add_argument(
+        '-d', '--debug',
+        help = 'show all debugging output',
+        action = 'store_const',
+        dest = 'loglevel',
+        const = logging.DEBUG,
+    )
+    subparsers = parser.add_subparsers(
+        metavar = 'cmd',
+        help = 'Subcommand to execute',
+    )
+
+    # Slice parser
+    slice_parser = subparsers.add_parser(
+        'slice',
+        help = slice.__doc__,
+        description = slice.__doc__,
+    )
+    slice_parser.add_argument(
+        "slice_file",
+        help = "file defining the slices to be generated"
+    )
+    slice_parser.add_argument(
+        "datafile_in",
+        help = "file with surface data to be processed",
+    )
+    slice_parser.add_argument(
+        "datafile_out",
+        help = "file where extracted slice data will be saved",
+        nargs = "?",
+        default = "slices.plt",
+    )
+    slice_parser.set_defaults(func = slice)
+
+    # Export parser
+    export_parser = subparsers.add_parser(
+        'export',
+        help = export.__doc__,
+        description = export.__doc__,
+    )
+    export_parser.add_argument(
+        "layout_file",
+        help = "path to layout file to be processed"
+    )
+    export_parser.add_argument(
+        "output_dir",
+        help = "location where PNG files will be saves",
+        nargs = "?",
+        default = ".",
+    )
+    export_parser.add_argument(
+        "--width", "-w",
+        help = "width of exported figures in pixels",
+        default = "600",
+        type = int,
+    )
+    export_parser.add_argument(
+        "--supersample", "-s",
+        help = "level of supersampling used for export",
+        default = 2,
+        type = int,
+    )
+    export_parser.add_argument(
+        "--rescale",
+        help = "rescales colormaps and y-axes to fit data",
+        default = False,
+        action = 'store_true',
+    )
+    export_parser.add_argument(
+        "--num_contour",
+        help = "number of contour levels created when rescaling",
+        default = 21,
+        type = int,
+    )
+    export_parser.set_defaults(func = export)
+
+    return parser
+
+def main():
+    parser = build_parser()
+    args = parser.parse_args()
+    logging.getLogger().setLevel(args.loglevel)
+    if "func" in args:
+        args.func(args)
+    else:
+        parser.print_help()
+    if os.path.exists("batch.log"):
+        os.remove("batch.log")
+
+if __name__ == '__main__':
+    main()
+

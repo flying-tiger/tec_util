@@ -1,0 +1,16 @@
+#%Module
+module-whatis Adds tec_util command to the environment
+
+# Get path where module file is installed, taking into consideration
+# the fact that we might accessing it via a symlink.
+if {[catch {file readlink $ModulesCurrentModulefile} err]} {
+    set mfile $ModulesCurrentModulefile
+} else {
+    set mfile [file readlink $ModulesCurrentModulefile]
+}
+set mfile_root [file dirname [file normalize $mfile]]
+
+# Configure the environment
+setenv       TEC_UTIL_ROOT $mfile_root
+prepend-path PATH          $mfile_root/bin
+prepend-path PYTHONPATH    $mfile_root/python
