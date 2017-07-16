@@ -34,6 +34,18 @@ def export(args):
         args.num_contour,
     )
 
+def to_ascii(args):
+    ''' Convert a Tecplot datafile to ascii format '''
+    import tecplot as tp
+    dataset = tp.data.load_tecplot(args.datafile_in)
+    tp.data.save_tecplot_ascii(arg.datafile_out, dataset=dataset)
+
+def to_plt(args):
+    ''' Convert a Tecplot datafile to binary (plt) format '''
+    import tecplot as tp
+    dataset = tp.data.load_tecplot(args.datafile_in)
+    tp.data.save_tecplot_plt(args.datafile_out, dataset=dataset)
+
 
 #-------------------------------------------------------------------------------
 # Main Program
@@ -41,7 +53,7 @@ def export(args):
 def build_parser():
     ''' Construct the command line argument parser '''
 
-    # Main parser
+    #---- Main parser ----
     parser = argparse.ArgumentParser(
         description = "Utilities for working with Tecplot data files.",
     )
@@ -65,7 +77,7 @@ def build_parser():
         help = 'Subcommand to execute',
     )
 
-    # Slice parser
+    #---- Slice parser ----
     slice_parser = subparsers.add_parser(
         'slice',
         help = slice.__doc__,
@@ -81,13 +93,13 @@ def build_parser():
     )
     slice_parser.add_argument(
         "datafile_out",
-        help = "file where extracted slice data will be saved",
+        help = "file where extracted slices will be saved (def: slices.plt)",
         nargs = "?",
         default = "slices.plt",
     )
     slice_parser.set_defaults(func = slice)
 
-    # Export parser
+    #---- Export parser ----
     export_parser = subparsers.add_parser(
         'export',
         help = export.__doc__,
@@ -99,35 +111,71 @@ def build_parser():
     )
     export_parser.add_argument(
         "output_dir",
-        help = "location where PNG files will be saves",
+        help = "location where PNG files will be saves (def: '.')",
         nargs = "?",
         default = ".",
     )
     export_parser.add_argument(
         "--width", "-w",
-        help = "width of exported figures in pixels",
+        help = "width of exported figures in pixels (def: 600)",
         default = "600",
         type = int,
     )
     export_parser.add_argument(
         "--supersample", "-s",
-        help = "level of supersampling used for export",
+        help = "level of supersampling used for export (def: 2)",
         default = 2,
         type = int,
     )
     export_parser.add_argument(
         "--rescale",
-        help = "rescales colormaps and y-axes to fit data",
+        help = "rescales colormaps and y-axes to fit data (def: false)",
         default = False,
         action = 'store_true',
     )
     export_parser.add_argument(
         "--num_contour",
-        help = "number of contour levels created when rescaling",
+        help = "number of contour levels created when rescaling (def: 21)",
         default = 21,
         type = int,
     )
     export_parser.set_defaults(func = export)
+
+    #---- ASCII Converter ----
+    ascii_parser = subparsers.add_parser(
+        'to_ascii',
+        help = to_ascii.__doc__,
+        description = to_ascii.__doc__,
+    )
+    ascii_parser.add_argument(
+        "datafile_in",
+        help = "file to be converted",
+    )
+    ascii_parser.add_argument(
+        "datafile_out",
+        help = "file where ascii data is saved (def: dataset.dat)",
+        nargs = "?",
+        default = "dataset.dat",
+    )
+    ascii_parser.set_defaults(func = to_ascii)
+
+    #---- PLT Converter ----
+    plt_parser = subparsers.add_parser(
+        'to_plt',
+        help = to_plt.__doc__,
+        description = to_plt.__doc__,
+    )
+    plt_parser.add_argument(
+        "datafile_in",
+        help = "file to be converted",
+    )
+    plt_parser.add_argument(
+        "datafile_out",
+        help = "file where binary data is saved (def: dataset.plt)",
+        nargs = "?",
+        default = "dataset.plt",
+    )
+    plt_parser.set_defaults(func = to_plt)
 
     return parser
 
