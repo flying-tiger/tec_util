@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import logging
 import os
@@ -55,6 +54,7 @@ def build_parser():
 
     #---- Main parser ----
     parser = argparse.ArgumentParser(
+        prog = "tec_util",
         description = "Utilities for working with Tecplot data files.",
     )
     parser.add_argument(

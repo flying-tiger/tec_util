@@ -12,5 +12,5 @@ set mfile_root [file dirname [file normalize $mfile]]
 
 # Configure the environment
 setenv       TEC_UTIL_ROOT $mfile_root
-prepend-path PATH          $mfile_root/bin
-prepend-path PYTHONPATH    $mfile_root/python
+setalias     tec_util      'python -m tec_util'
+prepend-path PYTHONPATH    $mfile_root
