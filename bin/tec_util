@@ -38,7 +38,7 @@ def to_ascii(args):
     ''' Convert a Tecplot datafile to ascii format '''
     import tecplot as tp
     dataset = tp.data.load_tecplot(args.datafile_in)
-    tp.data.save_tecplot_ascii(arg.datafile_out, dataset=dataset)
+    tp.data.save_tecplot_ascii(args.datafile_out, dataset=dataset)
 
 def to_plt(args):
     ''' Convert a Tecplot datafile to binary (plt) format '''
