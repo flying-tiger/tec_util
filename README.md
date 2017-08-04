@@ -16,17 +16,30 @@ operations that I used to implement using macro files.
 
 
 ## Install
-Before installing this software, ensure you have the PyTecplot interface
-installed and your envrionment properly configured; instructions are
-[here](http://www.tecplot.com/docs/pytecplot/install.html). When properly
-installed, you should be able to do the following:
 
-    >> python3 -c "import tecplot; print(tecplot.version.version)"
-    0.8.1
+### Install via pip
+The simplest installation method is to use pip to install directly from GitHub:
 
-To install tec_util, a modulefile is provided (see
-[envrionment modules](http://modules.sourceforge.net/)). Simply symlink this
-file into your privatemodules directory and load as follows:
+    pip install git+git://github.com/flying-tiger/tec_util.git
+    
+This will install the master branch into your site-packages along with the 
+latest version of PyTecplot from PyPI.
+
+### Manual Install
+Alternatively, you can manually clone and install the package:
+
+    # Do this once 
+    git clone <install_path>
+    
+    # Put this in your .bashrc or similar
+    export TECUTIL_ROOT=<install_path>
+    export PYTHONPATH="$TECUTIL_ROOT:$PYTHON_PATH"
+    alias tec_util="python3 -m tec_util"
+
+If you use [envrionment modules](http://modules.sourceforge.net/)), a modulefile is 
+provided that will perform the envrionment configuration. Simply create symlink to
+the modulefile from somewhere on the module search path and load the module. For example,
+to use the ~/privatemodules directory:
 
     # Do this once
     mkdir -p ~/privatemodules
@@ -36,12 +49,14 @@ file into your privatemodules directory and load as follows:
     module load use.own
     module load cmatrix
 
-To install manually:
+### Making Sure PyTecplot is Configured
+Even if you do the automated install, chances are PyTecplot will required some additional
+configuration of the envrionment. Fully installation instructions are 
+[here](http://www.tecplot.com/docs/pytecplot/install.html). When properly installed, you
+should be able to do the following:
 
-* Set and export TEC_UTIL_ROOT
-* Add $TEC_UTIL_ROOT/bin to the search path
-* Add $TEC_UTIL_ROOT/python to the PYTHONPATH
-
+    >> python3 -c "import tecplot; print(tecplot.version.version)"
+    0.8.1
 
 ## Command-Line Useage
 
@@ -59,7 +74,7 @@ and generate a new datafile containing the output. I chose this approach because
 returning a new, logically independent dataset from a function is not possible
 without adding a new frame to the user's layout, which may be undesireable.
 Therefore, we fall back to properly isolated, but a less efficient file-based
-API and force the user load the output file into their layout manually. This is
+API and rely on the user load the output file into their layout manually. This is
 not ideal, and I may extend this API in the future, but it does what we need it
 to do for now.
 
