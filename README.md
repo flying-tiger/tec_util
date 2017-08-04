@@ -50,8 +50,8 @@ to use the ~/privatemodules directory:
     module load cmatrix
 
 ### Making Sure PyTecplot is Configured
-Even if you do the automated install, chances are PyTecplot will required some additional
-configuration of the envrionment. Fully installation instructions are 
+Even if you do the automated install, chances are PyTecplot will require some additional
+configuration of the envrionment. Full installation instructions are 
 [here](http://www.tecplot.com/docs/pytecplot/install.html). When properly installed, you
 should be able to do the following:
 
