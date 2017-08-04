@@ -36,7 +36,7 @@ Alternatively, you can manually clone and install the package:
     export PYTHONPATH="$TECUTIL_ROOT:$PYTHON_PATH"
     alias tec_util="python3 -m tec_util"
 
-If you use [envrionment modules](http://modules.sourceforge.net/)), a modulefile is 
+If you use [envrionment modules](http://modules.sourceforge.net/), a modulefile is 
 provided that will perform the envrionment configuration. Simply create symlink to
 the modulefile from somewhere on the module search path and load the module. For example,
 to use the ~/privatemodules directory:
