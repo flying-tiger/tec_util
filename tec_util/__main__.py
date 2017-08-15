@@ -3,12 +3,10 @@ import logging
 import os
 import sys
 import tec_util
-
 logging.basicConfig(
     stream=sys.stdout,
     format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
 )
-LOG = logging.getLogger(__name__)
 
 
 #-------------------------------------------------------------------------------
@@ -23,12 +21,15 @@ def slice(args):
     )
 
 def export(args):
-    ''' Export all pages in a layout to <page.name>.png '''
+    ''' Export all pages in a layout to [prefix]<page.name>.png '''
     tec_util.export_pages(
         args.layout_file,
         args.output_dir,
+        args.prefix,
         args.width,
         args.supersample,
+        args.yvar,
+        args.cvar,
         args.rescale,
         args.num_contour,
     )
@@ -111,21 +112,38 @@ def build_parser():
     )
     export_parser.add_argument(
         "output_dir",
-        help = "location where PNG files will be saves (def: '.')",
+        help = "location where PNG files will be saved (def: '.')",
         nargs = "?",
         default = ".",
     )
     export_parser.add_argument(
+        "prefix",
+        help = "string added to page.name to create filename (def: '')",
+        nargs = "?",
+        default = "",
+    )
+    export_parser.add_argument(
         "--width", "-w",
         help = "width of exported figures in pixels (def: 600)",
-        default = "600",
+        default = 600,
         type = int,
     )
     export_parser.add_argument(
         "--supersample", "-s",
-        help = "level of supersampling used for export (def: 2)",
+        help = "supersampling level used during export (def: 2)",
+        metavar = "SS",
         default = 2,
         type = int,
+    )
+    export_parser.add_argument(
+        "--yvar",
+        help = "Set y_variable used for linemaps plotted on 1st y-axis",
+        default = None,
+    )
+    export_parser.add_argument(
+        "--cvar",
+        help = "variable used for the 1st contour group",
+        default = None,
     )
     export_parser.add_argument(
         "--rescale",
@@ -135,7 +153,8 @@ def build_parser():
     )
     export_parser.add_argument(
         "--num_contour",
-        help = "number of contour levels created when rescaling (def: 21)",
+        help = "number of contour levels when rescaling (def: 21)",
+        metavar = "N",
         default = 21,
         type = int,
     )
@@ -182,7 +201,7 @@ def build_parser():
 def main():
     parser = build_parser()
     args = parser.parse_args()
-    logging.getLogger().setLevel(args.loglevel)
+    logging.getLogger('tec_util').setLevel(args.loglevel)
     if "func" in args:
         args.func(args)
     else:

@@ -14,26 +14,57 @@ def rescale_frame(frame, num_contour):
     if (frame.plot_type == tpc.PlotType.Cartesian3D or  \
        frame.plot_type == tpc.PlotType.Cartesian2D) and \
        plot.show_contour == True:
-        LOG.debug("Rescale 1st contour group")
+        LOG.debug("Rescale first contour group")
         plot.contour(0).levels.reset_to_nice(num_contour)
     elif frame.plot_type == tpc.PlotType.XYLine:
-        LOG.debug("Rescale 1st Y axis")
+        LOG.debug("Rescale first Y axis")
         plot.axes.y_axis(0).fit_range_to_nice()
 
-def export_pages(layout_file, output_dir, width=600, supersample=2, rescale=False, num_contour=21):
+def set_linemap_yvariable(frame, yvar):
+    ''' Set y_variable for all linemaps using the 1st y-axis '''
+    import tecplot.constant as tpc
+    if frame.plot_type == tpc.PlotType.XYLine:
+        for i,lmap in enumerate(frame.plot().linemaps()):
+            LOG.debug("Setting y_variable for linemap %d", i)
+            if lmap.y_axis_index == 0:
+                lmap.y_variable = frame.dataset.variable(yvar)
+
+def set_contour_variable(frame, cvar):
+    ''' Set variable used to color the first contour group '''
+    import tecplot.constant as tpc
+    if (frame.plot_type == tpc.PlotType.Cartesian3D or  \
+       frame.plot_type == tpc.PlotType.Cartesian2D) and \
+       plot.show_contour == True:
+        LOG.debug("Setting variable for first contour group")
+        plot.contour(0).variable = frame.dataset.variable(cvar)
+
+def export_pages(layout_file,
+                 output_dir,
+                 prefix = '',
+                 width = 600,
+                 supersample = 2,
+                 yvar = None,
+                 cvar = None,
+                 rescale=False,
+                 num_contour=21):
     ''' Export all pages in a layout to <page_name>.png '''
     import tecplot as tp
     import tecplot.constant as tpc
     LOG.info("Load layout file %s", layout_file)
     tp.layout.load_layout(layout_file)
+    os.makedirs(output_dir, exist_ok=True)
     for page in tp.pages():
-        outfile = os.path.join(output_dir, page.name + ".png")
-        LOG.info("Export page %s to %s", page.name, outfile)
         page.activate()
-        if rescale:
-            LOG.info("Rescale axes for all frames on page %s", page.name)
-            for frame in page.frames():
+        for frame in page.frames():
+            LOG.debug("Pre-process frame %s on page %s", frame.name, page.name)
+            if yvar:
+                set_linemap_yvariable(frame, yvar)
+            if cvar:
+                set_contour_variable(frame, cvar)
+            if rescale:
                 rescale_frame(frame, num_contour)
+        outfile = os.path.join(output_dir, prefix + page.name + ".png")
+        LOG.info("Export page %s to %s", page.name, outfile)
         tp.export.save_png(
             outfile, width,
             region = tpc.ExportRegion.AllFrames,
