@@ -34,6 +34,15 @@ def export(args):
         args.num_contour,
     )
 
+def diff(args):
+    ''' Compute delta between two solution files '''
+    tec_util.difference_files(
+        args.datafile_new,
+        args.datafile_old,
+        args.datafile_out,
+        args.zones,
+    )
+
 def to_ascii(args):
     ''' Convert a Tecplot datafile to ascii format '''
     import tecplot as tp
@@ -159,6 +168,46 @@ def build_parser():
         type = int,
     )
     export_parser.set_defaults(func = export)
+
+    #---- File difference parser ----
+    diff_parser = subparsers.add_parser(
+        'diff',
+        help = diff.__doc__,
+        description = diff.__doc__,
+    )
+    diff_parser.add_argument(
+        'datafile_new',
+        help = "file to be differenced",
+    )
+    diff_parser.add_argument(
+        'datafile_old',
+        help = "file to be used as baseline",
+    )
+    slice_parser.add_argument(
+        "datafile_out",
+        help = "file where differences are saved (def: diff.plt)",
+        nargs = "?",
+        default = "diff.plt",
+    )
+    diff_parser.add_argument(
+        '-z', '--zone_pattern',
+        help = "Glob pattern for filtering zones (def: '*')",
+        default = "*",
+    )
+    diff_parser.add_argument(
+        '-v', '--var_pattern',
+        help = "Glob pattern for filtering variables (def: '*')",
+        default = "*",
+    )
+    diff_parser.add_argument(
+        '--nskip',
+        help = (
+            "Number of variables at beginning of the dataset that "
+            "are not differenced (preserves grid coordinates, def: 3)"
+        )
+        default = None,
+    )
+    diff_parser.set_defaults(func = diff)
 
     #---- ASCII Converter ----
     ascii_parser = subparsers.add_parser(
