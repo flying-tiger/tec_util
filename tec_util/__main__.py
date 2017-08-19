@@ -36,11 +36,13 @@ def export(args):
 
 def diff(args):
     ''' Compute delta between two solution files '''
-    tec_util.difference_files(
+    tec_util.difference_datasets(
         args.datafile_new,
         args.datafile_old,
         args.datafile_out,
-        args.zones,
+        zone_pattern = args.zone_pattern,
+        var_pattern = args.var_pattern,
+        nskip = args.nskip,
     )
 
 def to_ascii(args):
@@ -183,7 +185,7 @@ def build_parser():
         'datafile_old',
         help = "file to be used as baseline",
     )
-    slice_parser.add_argument(
+    diff_parser.add_argument(
         "datafile_out",
         help = "file where differences are saved (def: diff.plt)",
         nargs = "?",
@@ -204,8 +206,9 @@ def build_parser():
         help = (
             "Number of variables at beginning of the dataset that "
             "are not differenced (preserves grid coordinates, def: 3)"
-        )
-        default = None,
+        ),
+        type = int,
+        default = 3,
     )
     diff_parser.set_defaults(func = diff)
 

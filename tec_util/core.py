@@ -185,7 +185,7 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
     for i, (vnew, vold) in enumerate(zip(var_new, var_old)):
         if vnew.name != vold.name:
             LOG.warning(
-                "The variable pair %d has mismatching names: %s != %s",
+                "Variable pair %d has mismatching names: %s != %s",
                 i, vnew.name, vold.name,
             )
 
@@ -200,6 +200,12 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
         ).format(zone_pattern, len(zone_new), len(zone_old))
         LOG.error(message)
         raise RuntimeError(message)
+    for i, (znew, zold) in enumerate(zip(zone_new, zone_old)):
+        if znew.name != zold.name:
+            LOG.warning(
+                "Zone pair %d has mismatching names: %s != %s",
+                i, znew.name, zold.name,
+            )
 
     # Compute delta new - old. Deltas get appended to data_new.
     LOG.info("Compute dataset differences (new - old).")
