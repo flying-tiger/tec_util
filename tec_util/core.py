@@ -56,15 +56,8 @@ def write_dataset(filename, dataset, **kwargs):
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
-def export_pages(layout_file,
-                 output_dir,
-                 prefix = '',
-                 width = 600,
-                 supersample = 2,
-                 yvar = None,
-                 cvar = None,
-                 rescale=False,
-                 num_contour=21):
+def export_pages(layout_file, output_dir, prefix='', width=600, supersample=2,
+                 yvar=None, cvar=None, rescale=False, num_contour=21):
     ''' Export all pages in a layout to <page_name>.png '''
     import tecplot as tp
     import tecplot.constant as tpc
@@ -231,6 +224,6 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
 
     # Wrapup
     vars_to_save = itertools.chain(range(nskip),range(initial_num_vars, data_new.num_variables))
-    write_dataset(datafile_out, data_new, variables=vars_to_save)
+    write_dataset(datafile_out, data_new, variables=vars_to_save, zones=zone_new)
     tp.active_page().delete_frame(frame_new) # Free memory ASAP
     tp.active_page().delete_frame(frame_old)

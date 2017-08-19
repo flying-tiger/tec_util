@@ -1,13 +1,26 @@
+import contextlib
 import os
 import sys
-from os.path import dirname, abspath, join
+import tempfile
 
-test_root = dirname(abspath(__file__))
+test_root = os.path.dirname(os.path.abspath(__file__))
 
 def data_item_path(name):
     ''' Get abspath to a test data item '''
-    return join(test_root, 'data', name)
+    return os.path.join(test_root, 'data', name)
 
 def open_datafile(name):
     ''' Get read-only handle to test data file '''
     return open(data_item_path(name), 'r')
+
+@contextlib.contextmanager
+def temp_workspace():
+    ''' Create and chdir into temp directory. chdir back when done '''
+    home = os.getcwd()
+    with tempfile.TemporaryDirectory() as temp:
+        try:
+            os.chdir(temp)
+            yield
+        finally:
+            os.chdir(home)
+
