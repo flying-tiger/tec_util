@@ -1,7 +1,7 @@
 TITLE     = "Plot3D DataSet"
 VARIABLES = "x"
 "y"
-"x"
+"z"
 DATASETAUXDATA Common.SpeedOfSound="1.0"
 DATASETAUXDATA Common.VectorVarsAreVelocity="FALSE"
 ZONE T="cube.x:1"

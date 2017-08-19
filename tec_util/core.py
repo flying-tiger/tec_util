@@ -1,3 +1,4 @@
+import itertools
 import logging
 import math
 import os
@@ -44,7 +45,8 @@ def set_contour_variable(frame, cvar):
 
 def write_dataset(filename, dataset, **kwargs):
     ''' Writes dataset as ASCII or PLT depending on extension '''
-    LOG.info("Write dataset %s", datafile_out)
+    import tecplot as tp
+    LOG.info("Write dataset %s", filename)
     ext = os.path.splitext(filename)[1]
     if ext == ".dat":
         tp.data.save_tecplot_ascii(filename, dataset=dataset, **kwargs)
@@ -228,7 +230,7 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
                 delta.values(znew.index)[:] = [math.nan] * len(delta.values(znew.index))
 
     # Wrapup
-    vars_to_save = range(nskip) + range(initial_num_vars, data_new.num_variables)
-    write_dataset(datafile_out, dataset_new, variables=vars_to_save)
+    vars_to_save = itertools.chain(range(nskip),range(initial_num_vars, data_new.num_variables))
+    write_dataset(datafile_out, data_new, variables=vars_to_save)
     tp.active_page().delete_frame(frame_new) # Free memory ASAP
     tp.active_page().delete_frame(frame_old)
