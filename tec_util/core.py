@@ -126,6 +126,11 @@ def slice_surfaces(slice_file, datafile_in, datafile_out):
     slice_zones = []
     for slice_definition in config.slices:
         name, origin, normal, zones = slice_definition
+        if isinstance(zones, str):
+            if zones == "all":
+                zones = range(dataset.num_zones)
+            else:
+                raise RuntimeError("String '%s' is not a valid zone specifier" % zones)
         LOG.info("Extract slice '%s'", name)
         frame.active_zones(zones)
         zone = tp.data.extract.extract_slice(
