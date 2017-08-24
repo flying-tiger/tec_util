@@ -13,11 +13,15 @@ operations that I used to implement using macro files.
 ## Command-Line Summary
 
     tec_util --help                              # Command summary
+    tec_util info     infile                     # Print zone/variable/timepoint info
     tec_util to_ascii infile [outfile]           # Convert datafile to ASCII format
     tec_util to_plt   infile [outfile]           # Convert datafile to PLT format
     tec_util slice    slices.py infile [outfile] # Extract slices from surface zones
     tec_util export   layout.lay [outdir]        # Export all pages in layout to png
+    tec_util diff     new old [outfile]          # Compute new-old, write to out
 
+## To Do
+* Make `slice_surfaces` take list of tuples; parse slices.py as part of the CLI.
 
 ## Requirements
 * Python 3.4+
@@ -86,15 +90,13 @@ logic.
 
 
 ## Python API Summary
-Currently the Python API consists of two functions that reside in the tec_util
-module: export_pages and slices_surfaces. These functions follow a similar API
-to their command line counterpats. Both subroutines require a file name as input
-and generate a new datafile containing the output. I chose this approach because
-returning a new, logically independent dataset from a function is not possible
-without adding a new frame to the user's layout, which may be undesireable.
-Therefore, we fall back to properly isolated, but a less efficient file-based
-API and rely on the user load the output file into their layout manually. This is
-not ideal, and I may extend this API in the future, but it does what we need it
-to do for now.
-
+Currently the Python API consists of three functions that reside in the tec_util
+module: difference_datasets, export_pages and slices_surfaces. These functions follow
+a similar API to their command line counterpats. Both subroutines require a file name
+as input and generate a new datafile containing the output. I chose this approach
+because returning a new, logically independent dataset from a function is not possible
+without adding a new frame to the user's layout, which may be undesireable. Therefore,
+we fall back to properly isolated, but a less efficient file-based API and rely on the
+user load the output file into their layout manually. This is not ideal, and I may
+extend this API in the future, but it does what we need it to do for now.
 
