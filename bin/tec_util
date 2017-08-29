@@ -1,0 +1,5 @@
+#!/bin/bash
+# This script allows tec_util to be accessed via commandline when
+# added to envrionment via modulefile. The set-alias module command
+# won't work because the alias/function created is not exported.
+python3 -m tec_util "$@"

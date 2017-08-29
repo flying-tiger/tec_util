@@ -1,4 +1,4 @@
-#%Module
+#%Module1.0
 module-whatis Adds tec_util command to the environment
 
 # Get path where module file is installed, taking into consideration
@@ -13,4 +13,4 @@ set mfile_root [file dirname [file normalize $mfile]]
 # Configure the environment
 setenv       TEC_UTIL_ROOT $mfile_root
 prepend-path PYTHONPATH    $mfile_root
-set-alias    tec_util      "python -m tec_util"
+prepend-path PATH          $mfile_root/bin
