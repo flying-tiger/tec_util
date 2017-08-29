@@ -27,14 +27,14 @@ operations that I use to implement using macro files.
     tec_util.slice_surfaces(slice_file, datafile_in, datafile_out)
     tec_util.difference_datasets(datafile_new, datafile_old, datafile_out)
 
-Currently, the Python API consists of three functions that reside in the tec_util
+Currently, the Python API consists of three functions that reside in the `tec_util`
 module. These functions follow a similar API to their command line counterparts. All
-functions accept pathnames as input and generate new datafiles containing the output.
-I chose this approach because returning a new, logically independent dataset from a
-function is not possible without adding a new frame to the global layout, which
-may be an undesireable side effect. Therefore, tec_util utilizes a less efficient
-file-based API but guarantees the state of the tecplot runtime after the function is
-called will be the same as before the the function call.
+functions accept pathnames as input and generate new datafiles as output. I chose
+this approach because returning a new, logically independent dataset from a function
+is not possible without adding a new frame to the global layout, which may be an
+undesireable side effect. Therefore, `tec_util` utilizes a less efficient file-based
+API but guarantees the state of the tecplot runtime after a function is called is the
+same as before the call.
 
 ## To Do
 * Make `slice_surfaces` take list of tuples; parse slices.py as part of the CLI.
@@ -91,17 +91,18 @@ As detailed at the link above, PyTecplot relies on `LD_LIBRARY_PATH` and
 `DYLD_LIBRARY_PATH` to locate the Tecplot libraries installed on your system. This
 presents a problem when using `tec_util` on macOS because starting with El Capitan,
 macOS scrubs `DYLD_LIBRARY_PATH` from the environment before spawning subprocesses of
-`/bin/bash` and other "protected" programs. In practice, this means tec_util cannot
+`/bin/bash` and other "protected" programs. In practice, this means `tec_util` cannot
 be used in a script unless it is source'd or hard-coded with the location of the
 Tecplot libraries. This also prevent use of `tec_util` as as step in a Makefile since
 each line of a recipe is executed in an isolated subshell.
 
-A work around for this is to define a function that shadows tec_util and always runs
-the Tecplot environment setup command before calling `tec_util`. It's an ugly solution,
+A work around for this is to define a function that shadows tec_util and explicitly
+sets the `DYLD_LIBRARY_PATH` variable before calling `tec_util`. It's an ugly solution,
 but it allows scripts and Makefiles to be written without hardcoded, platform-specific
 logic.
 
-    function tec_util { eval $("$TECHOME/bin/tec360-env") && "$(which tec_util)" "$@"; }
+    export TECBIN=<path_to_tecplot_libs>
+    function tec_util { DYLD_LIBRARY_HOME="$TECBIN" "$(which tec_util)" "$@"; }
     export -f tec_util
 
 
