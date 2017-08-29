@@ -56,13 +56,11 @@ def write_dataset(filename, dataset, **kwargs):
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
-def export_pages(layout_file, output_dir, prefix='', width=600, supersample=2,
+def export_pages(output_dir, prefix='', width=600, supersample=2,
                  yvar=None, cvar=None, rescale=False, num_contour=21):
-    ''' Export all pages in a layout to <page_name>.png '''
+    ''' Export all pages in the current layout to <page_name>.png '''
     import tecplot as tp
     import tecplot.constant as tpc
-    LOG.info("Load layout file %s", layout_file)
-    tp.layout.load_layout(layout_file)
     os.makedirs(output_dir, exist_ok=True)
     for page in tp.pages():
         page.activate()
@@ -115,36 +113,44 @@ def slice_surfaces(slice_file, datafile_in, datafile_out):
     config = SourceFileLoader("config", slice_file).load_module()
     sys.dont_write_bytecode = False
 
-    # Load and slice the dataset
-    LOG.info("Load dataset %s", datafile_in)
-    frame = tp.active_page().add_frame()
-    dataset = tp.data.load_tecplot(
-        datafile_in,
-        frame = frame,
-        initial_plot_type = tpc.PlotType.Cartesian3D
-    )
-    slice_zones = []
-    for slice_definition in config.slices:
-        name, origin, normal, zones = slice_definition
-        if isinstance(zones, str):
-            if zones == "all":
-                zones = range(dataset.num_zones)
-            else:
-                raise RuntimeError("String '%s' is not a valid zone specifier" % zones)
-        LOG.info("Extract slice '%s'", name)
-        frame.active_zones(zones)
-        zone = tp.data.extract.extract_slice(
-            origin  = origin,
-            normal  = normal,
-            source  = tpc.SliceSource.SurfaceZones,
-            dataset = dataset,
-        )
-        zone.name = name
-        slice_zones.append(zone)
+    try:
 
-    # Wrap up
-    write_dataset(datafile_out, dataset, zones=slice_zones)
-    tp.active_page().delete_frame(frame) # Free memory ASAP
+        # Create frame to hold data. This modifies the global state of
+        # the tecplot module and must be undone in the "finally" block.
+        frame = tp.active_page().add_frame()
+
+        # Load and slice the dataset
+        LOG.info("Load dataset %s", datafile_in)
+        dataset = tp.data.load_tecplot(
+            datafile_in,
+            frame = frame,
+            initial_plot_type = tpc.PlotType.Cartesian3D
+        )
+        slice_zones = []
+        for slice_definition in config.slices:
+            name, origin, normal, zones = slice_definition
+            if isinstance(zones, str):
+                if zones == "all":
+                    zones = range(dataset.num_zones)
+                else:
+                    raise RuntimeError("String '%s' is not a valid zone specifier" % zones)
+            LOG.info("Extract slice '%s'", name)
+            frame.active_zones(zones)
+            zone = tp.data.extract.extract_slice(
+                origin  = origin,
+                normal  = normal,
+                source  = tpc.SliceSource.SurfaceZones,
+                dataset = dataset,
+            )
+            zone.name = name
+            slice_zones.append(zone)
+
+        # Save results
+        write_dataset(datafile_out, dataset, zones=slice_zones)
+
+    finally:
+        # Restore global state
+        tp.active_page().delete_frame(frame)
 
 def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="*", var_pattern="*", nskip=3):
     ''' Compute variable-by-variable difference between datasets.
@@ -168,73 +174,81 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
         def subtract(x_arr,y_arr):
             return [x-y for x,y in zip(a_arr,y_arr)]
 
-    # Load data
-    LOG.info("Load new dataset from %s", datafile_new)
-    frame_new = tp.active_page().add_frame()
-    data_new = tp.data.load_tecplot(datafile_new, frame = frame_new)
-    LOG.info("Load old dataset from %s", datafile_old)
-    frame_old = tp.active_page().add_frame()
-    data_old = tp.data.load_tecplot(datafile_old, frame = frame_old)
+    try:
 
-    # Get variable information
-    var_new = list(data_new.variables(var_pattern))
-    var_old = list(data_old.variables(var_pattern))
-    if len(var_new) != len(var_old):
-        message = (
-            "The number of variables matching the glob pattern "
-            "'{}' in datafile_new ({}) does not match the number "
-            "in datafile_old ({})."
-        ).format(var_pattern, len(var_new), len(var_old))
-        LOG.error(message)
-        raise RuntimeError(message)
-    for i, (vnew, vold) in enumerate(zip(var_new, var_old)):
-        if vnew.name != vold.name:
-            LOG.warning(
-                "Variable pair %d has mismatching names: %s != %s",
-                i, vnew.name, vold.name,
-            )
+        # Create new frames to hold the data. This modifies the global state
+        # of the tecplot module and is restored in the "finally" block.
+        frame_new = tp.active_page().add_frame()
+        frame_old = tp.active_page().add_frame()
 
-    # Get zone information
-    zone_new = list(data_new.zones(zone_pattern))
-    zone_old = list(data_old.zones(zone_pattern))
-    if len(zone_new) != len(zone_old):
-        message = (
-            "The number of zones matching the glob pattern "
-            "'{}' in datafile_new ({}) does not match the number "
-            "in datafile_old ({})."
-        ).format(zone_pattern, len(zone_new), len(zone_old))
-        LOG.error(message)
-        raise RuntimeError(message)
-    for i, (znew, zold) in enumerate(zip(zone_new, zone_old)):
-        if znew.name != zold.name:
-            LOG.warning(
-                "Zone pair %d has mismatching names: %s != %s",
-                i, znew.name, zold.name,
-            )
+        # Load datasets
+        LOG.info("Load new dataset from %s", datafile_new)
+        data_new = tp.data.load_tecplot(datafile_new, frame = frame_new)
+        LOG.info("Load old dataset from %s", datafile_old)
+        data_old = tp.data.load_tecplot(datafile_old, frame = frame_old)
 
-    # Compute delta new - old. Deltas get appended to data_new.
-    LOG.info("Compute dataset differences (new - old).")
-    initial_num_vars = data_new.num_variables
-    for i, (vnew, vold) in enumerate(zip(var_new, var_old)):
-        if vnew.index < nskip or vold.index < nskip:
-            LOG.debug("Skipping variable pair %d; index less than nskip", i)
-            continue
-        delta = data_new.add_variable("delta_" + vnew.name)
-        for znew, zold in zip(zone_new, zone_old):
-            try:
-                delta.values(znew.index)[:] = subtract(
-                    vnew.values(znew.index)[:],
-                    vold.values(zold.index)[:],
+        # Get variable information
+        var_new = list(data_new.variables(var_pattern))
+        var_old = list(data_old.variables(var_pattern))
+        if len(var_new) != len(var_old):
+            message = (
+                "The number of variables matching the glob pattern "
+                "'{}' in datafile_new ({}) does not match the number "
+                "in datafile_old ({})."
+            ).format(var_pattern, len(var_new), len(var_old))
+            LOG.error(message)
+            raise RuntimeError(message)
+        for i, (vnew, vold) in enumerate(zip(var_new, var_old)):
+            if vnew.name != vold.name:
+                LOG.warning(
+                    "Variable pair %d has mismatching names: %s != %s",
+                    i, vnew.name, vold.name,
                 )
-            except:
-                LOG.exception(
-                    'Error while computing delta "%s" for zones "%s" and "%s". Setting to NaN.',
-                    zold.name, znew.name,
-                )
-                delta.values(znew.index)[:] = [math.nan] * len(delta.values(znew.index))
 
-    # Wrapup
-    vars_to_save = itertools.chain(range(nskip),range(initial_num_vars, data_new.num_variables))
-    write_dataset(datafile_out, data_new, variables=vars_to_save, zones=zone_new)
-    tp.active_page().delete_frame(frame_new) # Free memory ASAP
-    tp.active_page().delete_frame(frame_old)
+        # Get zone information
+        zone_new = list(data_new.zones(zone_pattern))
+        zone_old = list(data_old.zones(zone_pattern))
+        if len(zone_new) != len(zone_old):
+            message = (
+                "The number of zones matching the glob pattern "
+                "'{}' in datafile_new ({}) does not match the number "
+                "in datafile_old ({})."
+            ).format(zone_pattern, len(zone_new), len(zone_old))
+            LOG.error(message)
+            raise RuntimeError(message)
+        for i, (znew, zold) in enumerate(zip(zone_new, zone_old)):
+            if znew.name != zold.name:
+                LOG.warning(
+                    "Zone pair %d has mismatching names: %s != %s",
+                    i, znew.name, zold.name,
+                )
+
+        # Compute delta new - old. Deltas get appended to data_new.
+        LOG.info("Compute dataset differences (new - old).")
+        initial_num_vars = data_new.num_variables
+        for i, (vnew, vold) in enumerate(zip(var_new, var_old)):
+            if vnew.index < nskip or vold.index < nskip:
+                LOG.debug("Skipping variable pair %d; index less than nskip", i)
+                continue
+            delta = data_new.add_variable("delta_" + vnew.name)
+            for znew, zold in zip(zone_new, zone_old):
+                try:
+                    delta.values(znew.index)[:] = subtract(
+                        vnew.values(znew.index)[:],
+                        vold.values(zold.index)[:],
+                    )
+                except:
+                    LOG.exception(
+                        'Error while computing delta "%s" for zones "%s" and "%s". Setting to NaN.',
+                        zold.name, znew.name,
+                    )
+                    delta.values(znew.index)[:] = [math.nan] * len(delta.values(znew.index))
+
+        # Save results
+        vars_to_save = itertools.chain(range(nskip),range(initial_num_vars, data_new.num_variables))
+        write_dataset(datafile_out, data_new, variables=vars_to_save, zones=zone_new)
+
+    finally:
+        # Restore global state
+        tp.active_page().delete_frame(frame_new)
+        tp.active_page().delete_frame(frame_old)

@@ -25,8 +25,10 @@ def diff(args):
 
 def export(args):
     ''' Export all pages in a layout to [prefix]<page.name>.png '''
+    import tecplot as tp
+    LOG.info("Load layout file %s", args.layout_file)
+    tp.layout.load_layout(args.layout_file)
     tec_util.export_pages(
-        args.layout_file,
         args.output_dir,
         args.prefix,
         args.width,

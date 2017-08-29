@@ -7,7 +7,7 @@ line.
 Starting with the 2017 R1 release, Tecplot 360EX ships with a Python API that
 largely eliminates the need for macro files. This software provides a Python
 module and an associated set of command line bindings for several common
-operations that I used to implement using macro files.
+operations that I use to implement using macro files.
 
 
 ## Command-Line Summary
@@ -19,6 +19,22 @@ operations that I used to implement using macro files.
     tec_util slice    slices.py infile [outfile] # Extract slices from surface zones
     tec_util export   layout.lay [outdir]        # Export all pages in layout to png
     tec_util diff     new old [outfile]          # Compute new-old, write to out
+
+## Python API Summary
+
+    import tec_util
+    tec_util.export_pages(output_dir, prefix)
+    tec_util.slice_surfaces(slice_file, datafile_in, datafile_out)
+    tec_util.difference_datasets(datafile_new, datafile_old, datafile_out)
+
+Currently, the Python API consists of three functions that reside in the tec_util
+module. These functions follow a similar API to their command line counterparts. All
+functions accept pathnames as input and generate new datafiles containing the output.
+I chose this approach because returning a new, logically independent dataset from a
+function is not possible without adding a new frame to the global layout, which
+may be an undesireable side effect. Therefore, tec_util utilizes a less efficient
+file-based API but guarantees the state of the tecplot runtime after the function is
+called will be the same as before the the function call.
 
 ## To Do
 * Make `slice_surfaces` take list of tuples; parse slices.py as part of the CLI.
@@ -89,14 +105,4 @@ logic.
     export -f tec_util
 
 
-## Python API Summary
-Currently the Python API consists of three functions that reside in the tec_util
-module: difference_datasets, export_pages and slices_surfaces. These functions follow
-a similar API to their command line counterpats. Both subroutines require a file name
-as input and generate a new datafile containing the output. I chose this approach
-because returning a new, logically independent dataset from a function is not possible
-without adding a new frame to the user's layout, which may be undesireable. Therefore,
-we fall back to properly isolated, but a less efficient file-based API and rely on the
-user load the output file into their layout manually. This is not ideal, and I may
-extend this API in the future, but it does what we need it to do for now.
 
