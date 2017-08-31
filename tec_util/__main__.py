@@ -146,9 +146,8 @@ def configure_export_parser(parser):
         default = ".",
     )
     parser.add_argument(
-        "prefix",
+        "--prefix",
         help = "string added to page.name to create filename (def: '')",
-        nargs = "?",
         default = "",
     )
     parser.add_argument(
