@@ -5,14 +5,18 @@ conflict tec_util
 
 # Get path where module file is installed, taking into consideration
 # the fact that we might accessing it via a symlink.
-if {[catch {file readlink $ModulesCurrentModulefile} err]} {
+if {[catch {file readlink $ModulesCurrentModulefile}]} {
+    # mfile not a symlink; use as is
     set mfile $ModulesCurrentModulefile
 } else {
+    # mfile is symlink; dereference and cannonicalize
     set mfile [file readlink $ModulesCurrentModulefile]
+    cd [file dirname $ModulesCurrentModulefile]
+    set mfile [file normalize $mfile]
 }
-set mfile_root [file dirname [file normalize $mfile]]
+set root [file dirname $mfile]
 
 # Configure the environment
-setenv       TEC_UTIL_ROOT $mfile_root
-prepend-path PYTHONPATH    $mfile_root
-prepend-path PATH          $mfile_root/bin
+setenv       TEC_UTIL_ROOT $root
+prepend-path PYTHONPATH    $root
+prepend-path PATH          $root/bin
