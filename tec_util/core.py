@@ -37,6 +37,7 @@ def set_linemap_yvariable(frame, yvar):
 def set_contour_variable(frame, cvar):
     ''' Set variable used to color the first contour group '''
     import tecplot.constant as tpc
+    plot = frame.plot()
     if (frame.plot_type == tpc.PlotType.Cartesian3D or  \
        frame.plot_type == tpc.PlotType.Cartesian2D) and \
        plot.show_contour == True:
