@@ -20,7 +20,11 @@ def rescale_frame(frame, num_contour):
        frame.plot_type == tpc.PlotType.Cartesian2D) and \
        plot.show_contour == True:
         LOG.debug("Rescale first contour group")
-        plot.contour(0).levels.reset_to_nice(num_contour)
+        levels = plot.contour(0).levels
+        cfilt = plot.contour(0).colormap_filter
+        levels.reset_to_nice(num_contour)
+        cfilt.continuous_max = max(levels)
+        cfilt.continuous_min = min(levels)
     elif frame.plot_type == tpc.PlotType.XYLine:
         LOG.debug("Rescale first Y axis")
         plot.axes.y_axis(0).fit_range_to_nice()
