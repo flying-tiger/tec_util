@@ -83,6 +83,19 @@ def slice(args):
         args.datafile_out
     )
 
+def stats(args):
+    ''' Extract zone max/min/averages for each variable. '''
+    stats = tec_util.compute_statistics(args.datafile_in)
+    columns = ['Variable,','Zone','Min', 'Max', 'Mean']
+    width = max(len(columns[0]), max([len(k) for k in stats])+1)
+    print('{:{width}s} {:4s}, {:>15s}, {:>15s}, {:>15s}'
+          .format(*columns, width=width))
+    for vname, zone_stats in stats.items():
+        for i, stats in enumerate(zone_stats):
+            print('{:{width}s} {:4d}, {:15.6e}, {:15.6e}, {:15.6e}'
+                  .format(vname+',', i, *stats, width=width))
+    print()
+
 def to_ascii(args):
     ''' Convert a Tecplot datafile to ascii format '''
     import tecplot as tp
@@ -209,6 +222,12 @@ def configure_slice_parser(parser):
         default = "slices.plt",
     )
 
+def configure_stats_parser(parser):
+    parser.add_argument(
+        "datafile_in",
+        help = "file to be analyzed",
+    )
+
 def configure_to_ascii_parser(parser):
     parser.add_argument(
         "datafile_in",
@@ -272,6 +291,7 @@ def build_parser():
         'export':   ( export,    configure_export_parser   ),
         'info':     ( info,      configure_info_parser     ),
         'slice':    ( slice,     configure_slice_parser    ),
+        'stats':    ( stats,     configure_stats_parser    ),
         'to_ascii': ( to_ascii,  configure_to_ascii_parser ),
         'to_plt':   ( to_plt,    configure_to_plt_parser   ),
     }

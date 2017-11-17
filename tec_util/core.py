@@ -1,3 +1,4 @@
+import collections
 import itertools
 import logging
 import math
@@ -5,6 +6,7 @@ import os
 import sys
 import tempfile
 from importlib.machinery import SourceFileLoader
+from statistics import mean
 # import tecplot  (deferred to function scope to minimize load time)
 
 LOG = logging.getLogger(__name__)
@@ -61,6 +63,39 @@ def write_dataset(filename, dataset, **kwargs):
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
+def compute_statistics(datafile_in):
+    ''' Compute min/max/mean for each variable/zone combination '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+
+    try:
+
+        # Create frame to hold data. This modifies the global state of
+        # the tecplot module and must be undone in the "finally" block.
+        frame = tp.active_page().add_frame()
+
+        # Load and slice the dataset
+        LOG.info("Load dataset %s", datafile_in)
+        dataset = tp.data.load_tecplot(
+            datafile_in,
+            frame = frame,
+            initial_plot_type = tpc.PlotType.Cartesian3D
+        )
+        var_stats = {}
+        stats_tuple = collections.namedtuple('ZoneStats',['max','min','mean'])
+        for var in dataset.variables():
+            zone_stats = []
+            for zone in dataset.zones():
+                data = dataset.variable(var.index).values(zone.index)
+                zone_stats.append(stats_tuple(data.max, data.min, mean(data[:])))
+            var_stats[var.name] = zone_stats
+
+    finally:
+        # Restore global state
+        tp.active_page().delete_frame(frame)
+
+    return var_stats
+
 def export_pages(output_dir, prefix='', width=600, supersample=2,
                  yvar=None, cvar=None, rescale=False, num_contour=21):
     ''' Export all pages in the current layout to <page_name>.png '''
@@ -84,78 +119,6 @@ def export_pages(output_dir, prefix='', width=600, supersample=2,
             region = tpc.ExportRegion.AllFrames,
             supersample = supersample
         )
-
-def slice_surfaces(slice_file, datafile_in, datafile_out):
-    ''' Extract slice zones from a datafile of surface zones.
-
-        INPUTS:
-            slice_file
-                Path to a python module that defines a list of tuples called
-                "slices". The elements of each tuple are:
-                    [0] Name of the slice (string)
-                    [1] Origin of the slice plane (3-tuple of floats)
-                    [2] Normal vector of the slice plane (3-tuple of floats)
-                    [3] Indices of surface zones to be sliced (list of ints)
-
-            datafile_in
-                Path to Tecplot dataset with surface zone to slice
-
-            datafile_out
-                Path where slice data will be written. If the filename has the
-                extension ".dat", the data will be written in ASCII format.
-                Otherwise, binary format will be used.
-
-        OUPUTS:
-            none
-    '''
-    import tecplot as tp
-    import tecplot.constant as tpc
-
-    # Load slice definition file as "config" module
-    # This is based on https://stackoverflow.com/questions/67631
-    LOG.info("Load slice definition from %s", slice_file)
-    sys.dont_write_bytecode = True # So we don't clutter users workspace
-    config = SourceFileLoader("config", slice_file).load_module()
-    sys.dont_write_bytecode = False
-
-    try:
-
-        # Create frame to hold data. This modifies the global state of
-        # the tecplot module and must be undone in the "finally" block.
-        frame = tp.active_page().add_frame()
-
-        # Load and slice the dataset
-        LOG.info("Load dataset %s", datafile_in)
-        dataset = tp.data.load_tecplot(
-            datafile_in,
-            frame = frame,
-            initial_plot_type = tpc.PlotType.Cartesian3D
-        )
-        slice_zones = []
-        for slice_definition in config.slices:
-            name, origin, normal, zones = slice_definition
-            if isinstance(zones, str):
-                if zones == "all":
-                    zones = range(dataset.num_zones)
-                else:
-                    raise RuntimeError("String '%s' is not a valid zone specifier" % zones)
-            LOG.info("Extract slice '%s'", name)
-            frame.active_zones(zones)
-            zone = tp.data.extract.extract_slice(
-                origin  = origin,
-                normal  = normal,
-                source  = tpc.SliceSource.SurfaceZones,
-                dataset = dataset,
-            )
-            zone.name = name
-            slice_zones.append(zone)
-
-        # Save results
-        write_dataset(datafile_out, dataset, zones=slice_zones)
-
-    finally:
-        # Restore global state
-        tp.active_page().delete_frame(frame)
 
 def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="*", var_pattern="*", nskip=3):
     ''' Compute variable-by-variable difference between datasets.
@@ -257,3 +220,77 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
         # Restore global state
         tp.active_page().delete_frame(frame_new)
         tp.active_page().delete_frame(frame_old)
+
+def slice_surfaces(slice_file, datafile_in, datafile_out):
+    ''' Extract slice zones from a datafile of surface zones.
+
+        INPUTS:
+            slice_file
+                Path to a python module that defines a list of tuples called
+                "slices". The elements of each tuple are:
+                    [0] Name of the slice (string)
+                    [1] Origin of the slice plane (3-tuple of floats)
+                    [2] Normal vector of the slice plane (3-tuple of floats)
+                    [3] Indices of surface zones to be sliced (list of ints)
+
+            datafile_in
+                Path to Tecplot dataset with surface zone to slice
+
+            datafile_out
+                Path where slice data will be written. If the filename has the
+                extension ".dat", the data will be written in ASCII format.
+                Otherwise, binary format will be used.
+
+        OUPUTS:
+            none
+    '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+
+    # Load slice definition file as "config" module
+    # This is based on https://stackoverflow.com/questions/67631
+    LOG.info("Load slice definition from %s", slice_file)
+    sys.dont_write_bytecode = True # So we don't clutter users workspace
+    config = SourceFileLoader("config", slice_file).load_module()
+    sys.dont_write_bytecode = False
+
+    try:
+
+        # Create frame to hold data. This modifies the global state of
+        # the tecplot module and must be undone in the "finally" block.
+        frame = tp.active_page().add_frame()
+
+        # Load and slice the dataset
+        LOG.info("Load dataset %s", datafile_in)
+        dataset = tp.data.load_tecplot(
+            datafile_in,
+            frame = frame,
+            initial_plot_type = tpc.PlotType.Cartesian3D
+        )
+        slice_zones = []
+        for slice_definition in config.slices:
+            name, origin, normal, zones = slice_definition
+            if isinstance(zones, str):
+                if zones == "all":
+                    zones = range(dataset.num_zones)
+                else:
+                    raise RuntimeError("String '%s' is not a valid zone specifier" % zones)
+            LOG.info("Extract slice '%s'", name)
+            frame.active_zones(zones)
+            zone = tp.data.extract.extract_slice(
+                origin  = origin,
+                normal  = normal,
+                source  = tpc.SliceSource.SurfaceZones,
+                dataset = dataset,
+            )
+            zone.name = name
+            slice_zones.append(zone)
+
+        # Save results
+        write_dataset(datafile_out, dataset, zones=slice_zones)
+
+    finally:
+        # Restore global state
+        tp.active_page().delete_frame(frame)
+
+
