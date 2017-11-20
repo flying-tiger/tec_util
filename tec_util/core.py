@@ -63,7 +63,7 @@ def write_dataset(filename, dataset, **kwargs):
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
-def compute_statistics(datafile_in):
+def compute_statistics(datafile_in, variable_patterns=None):
     ''' Compute min/max/mean for each variable/zone combination '''
     import tecplot as tp
     import tecplot.constant as tpc
@@ -74,16 +74,29 @@ def compute_statistics(datafile_in):
         # the tecplot module and must be undone in the "finally" block.
         frame = tp.active_page().add_frame()
 
-        # Load and slice the dataset
+        # Load the dataset
         LOG.info("Load dataset %s", datafile_in)
         dataset = tp.data.load_tecplot(
             datafile_in,
             frame = frame,
             initial_plot_type = tpc.PlotType.Cartesian3D
         )
+
+        # Get all variables matching given patterns
+        if variable_patterns:
+            variables = {}
+            for pattern in variable_patterns:
+                for var in dataset.variables(pattern):
+                    variables[var.name] = var
+            variables = variables.values()
+        else:
+            variables = dataset.variables()
+        LOG.info("Generating statisitics for: %s", ' '.join([v.name for v in variables]))
+
+        # Compute per-zone statistics
         var_stats = {}
         stats_tuple = collections.namedtuple('ZoneStats',['max','min','mean'])
-        for var in dataset.variables():
+        for var in variables:
             zone_stats = []
             for zone in dataset.zones():
                 data = dataset.variable(var.index).values(zone.index)

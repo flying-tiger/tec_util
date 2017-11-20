@@ -85,7 +85,7 @@ def slice(args):
 
 def stats(args):
     ''' Extract zone max/min/averages for each variable. '''
-    stats = tec_util.compute_statistics(args.datafile_in)
+    stats = tec_util.compute_statistics(args.datafile_in, args.variables)
     columns = ['Variable,','Zone','Min', 'Max', 'Mean']
     width = max(len(columns[0]), max([len(k) for k in stats])+1)
     print('{:{width}s} {:4s}, {:>15s}, {:>15s}, {:>15s}'
@@ -93,7 +93,7 @@ def stats(args):
     for vname, zone_stats in stats.items():
         for i, stats in enumerate(zone_stats):
             print('{:{width}s} {:4d}, {:15.6e}, {:15.6e}, {:15.6e}'
-                  .format(vname+',', i, *stats, width=width))
+                  .format(vname+',', i, stats.min, stats.max, stats.mean, width=width))
     print()
 
 def to_ascii(args):
@@ -226,6 +226,12 @@ def configure_stats_parser(parser):
     parser.add_argument(
         "datafile_in",
         help = "file to be analyzed",
+    )
+    parser.add_argument(
+        "variables",
+        help = "variables to be analyzed (supports globbing).",
+        nargs = "*",
+        default = None,
     )
 
 def configure_to_ascii_parser(parser):
