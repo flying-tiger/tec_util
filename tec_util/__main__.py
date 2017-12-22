@@ -43,15 +43,17 @@ def info(args):
     import tecplot as tp
     from tecplot.constant import ZoneType as zt
     dataset = tp.data.load_tecplot(args.datafile_in)
+    has_times = hasattr(dataset, 'num_solution_times') # Missing in early versions of pytecplot
 
     print("\nDataset Info:")
     print((
         " Filename:         {}\n"
         " Title:            {ds.title}\n"
         " Num. Zones:       {ds.num_zones}\n"
-        " Num. Variables:   {ds.num_variables}\n"
-        " Num. Timepoints:  {ds.num_solution_times}"
+        " Num. Variables:   {ds.num_variables}"
     ).format(args.datafile_in, ds=dataset))
+    if has_times:
+        print(" Num. Timepoints:  {ds.num_solution_times}".format(ds=dataset))
 
     print("\nZone Info:")
     max_len = max([len(z.name) for z in dataset.zones()])
@@ -68,7 +70,7 @@ def info(args):
         print(" [{0.index:^3d}] {0.name}".format(var))
 
     print("\nTimepoint Info:")
-    if dataset.num_solution_times > 0:
+    if has_times and dataset.num_solution_times > 0:
         for i, time in enumerate(dataset.solution_times):
             print(" [{:^3d}] {}".format(i, time))
     else:
