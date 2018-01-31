@@ -45,34 +45,41 @@ def info(args):
     dataset = tp.data.load_tecplot(args.datafile_in)
     has_times = hasattr(dataset, 'num_solution_times') # Missing in early versions of pytecplot
 
+    # Determine width for pretty printed data
+    zone_name_length = max([len(z.name) for z in dataset.zones()])
+    var_name_length  = max([len(v.name) for v in dataset.variables()])
+    col_width = max([zone_name_length+6, var_name_length+6, 15]) + 4
+
     print("\nDataset Info:")
     print((
-        " Filename:         {}\n"
-        " Title:            {ds.title}\n"
-        " Num. Zones:       {ds.num_zones}\n"
-        " Num. Variables:   {ds.num_variables}"
-    ).format(args.datafile_in, ds=dataset))
+        " {1:{0}s} {df}\n"
+        " {2:{0}s} {ds.title}\n"
+        " {3:{0}s} {ds.num_zones}\n"
+        " {4:{0}s} {ds.num_variables}"
+        ).format(
+            col_width, 'Filename:', 'Title:', 'Num. Zones:', 'Num. Variables:',
+            df=args.datafile_in, ds=dataset
+    ))
     if has_times:
-        print(" Num. Timepoints:  {ds.num_solution_times}".format(ds=dataset))
+        print(" {1:{0}s} {ds.num_solution_times}".format(col_width, 'Num. Timepoints:', ds=dataset))
 
     print("\nZone Info:")
-    max_len = max([len(z.name) for z in dataset.zones()])
     for zone in dataset.zones():
-        leader = " [{0.index:^3d}] {0.name:{1}s}".format(zone, max_len+4)
+        leader = "[{z.index:^3d}] {z.name}".format(z=zone)
         if zone.zone_type == zt.Ordered:
-            info = "{0.zone_type.name} Zone, Strand={0.strand}, Dimensions={0.dimensions}"
+            line = " {1:{0}s} {z.zone_type.name} Zone, Strand={z.strand}, Dimensions={z.dimensions}"
         else:
-            info = "{0.zone_type.name} Zone, Strand={0.strand}, NElements={0.num_elements}, NFaces={0.num_faces}"
-        print(leader + info.format(zone))
+            line = " {1:{0}s} {z.zone_type.name} Zone, Strand={z.strand}, NElements={z.num_elements}, NFaces={z.num_faces}"
+        print(line.format(col_width, leader, z=zone))
 
     print("\nVariable Info:")
-    max_len = max([len(v.name) for v in dataset.variables()])
     for var in dataset.variables():
         vmin,vmax = float('inf'), -float('inf')
         for i in range(var.num_zones):
             vmin = min(vmin, var.values(i).min)
             vmax = max(vmax, var.values(i).max)
-        print(" [{0.index:^3d}] {0.name:{1}s} ({2:12.4e},{3:12.5e})".format(var, max_len+3, vmin, vmax))
+        leader = "[{v.index:^3d}] {v.name}".format(v=var)
+        print(" {1:{0}s} Min= {2:+12.5e}, Max= {3:+12.5e}".format(col_width, leader, vmin, vmax))
 
     print("\nTimepoint Info:")
     if has_times and dataset.num_solution_times > 0:
