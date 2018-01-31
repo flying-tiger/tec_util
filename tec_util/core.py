@@ -90,7 +90,7 @@ def compute_statistics(datafile_in, variable_patterns=None):
                     variables[var.name] = var
             variables = variables.values()
         else:
-            variables = dataset.variables()
+            variables = list(dataset.variables())
         LOG.info("Generating statisitics for: %s", ' '.join([v.name for v in variables]))
 
         # Compute per-zone statistics
