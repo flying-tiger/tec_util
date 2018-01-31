@@ -5,11 +5,13 @@ import math
 import os
 import sys
 import tempfile
+from contextlib import contextmanager
 from importlib.machinery import SourceFileLoader
 from statistics import mean
 # import tecplot  (deferred to function scope to minimize load time)
 
 LOG = logging.getLogger(__name__)
+
 
 #-----------------------------------------------------------------------
 # Helper Functions
@@ -50,6 +52,16 @@ def set_contour_variable(frame, cvar):
         LOG.debug("Setting variable for first contour group")
         plot.contour(0).variable = frame.dataset.variable(cvar)
 
+@contextmanager
+def temp_frame():
+    ''' Create/deletes a temporary frame on the current layout page.
+    '''
+    import tecplot
+    page  = tecplot.active_page()
+    frame = page.add_frame()
+    yield frame
+    page.delete_frame(frame)
+
 def write_dataset(filename, dataset, **kwargs):
     ''' Writes dataset as ASCII or PLT depending on extension '''
     import tecplot as tp
@@ -60,6 +72,7 @@ def write_dataset(filename, dataset, **kwargs):
     else:
         tp.data.save_tecplot_plt(filename, dataset=dataset, **kwargs)
 
+
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
@@ -67,12 +80,7 @@ def compute_statistics(datafile_in, variable_patterns=None):
     ''' Compute min/max/mean for each variable/zone combination '''
     import tecplot as tp
     import tecplot.constant as tpc
-
-    try:
-
-        # Create frame to hold data. This modifies the global state of
-        # the tecplot module and must be undone in the "finally" block.
-        frame = tp.active_page().add_frame()
+    with temp_frame() as frame:
 
         # Load the dataset
         LOG.info("Load dataset %s", datafile_in)
@@ -103,35 +111,7 @@ def compute_statistics(datafile_in, variable_patterns=None):
                 zone_stats.append(stats_tuple(data.max, data.min, mean(data[:])))
             var_stats[var.name] = zone_stats
 
-    finally:
-        # Restore global state
-        tp.active_page().delete_frame(frame)
-
     return var_stats
-
-def export_pages(output_dir, prefix='', width=600, supersample=2,
-                 yvar=None, cvar=None, rescale=False, num_contour=21):
-    ''' Export all pages in the current layout to <page_name>.png '''
-    import tecplot as tp
-    import tecplot.constant as tpc
-    os.makedirs(output_dir, exist_ok=True)
-    for page in tp.pages():
-        page.activate()
-        for frame in page.frames():
-            LOG.debug("Pre-process frame %s on page %s", frame.name, page.name)
-            if yvar:
-                set_linemap_yvariable(frame, yvar)
-            if cvar:
-                set_contour_variable(frame, cvar)
-            if rescale:
-                rescale_frame(frame, num_contour)
-        outfile = os.path.join(output_dir, prefix + page.name + ".png")
-        LOG.info("Export page %s to %s", page.name, outfile)
-        tp.export.save_png(
-            outfile, width,
-            region = tpc.ExportRegion.AllFrames,
-            supersample = supersample
-        )
 
 def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="*", var_pattern="*", nskip=3):
     ''' Compute variable-by-variable difference between datasets.
@@ -155,12 +135,7 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
         def subtract(x_arr,y_arr):
             return [x-y for x,y in zip(a_arr,y_arr)]
 
-    try:
-
-        # Create new frames to hold the data. This modifies the global state
-        # of the tecplot module and is restored in the "finally" block.
-        frame_new = tp.active_page().add_frame()
-        frame_old = tp.active_page().add_frame()
+    with temp_frame() as frame_new, temp_frame() as frame_old:
 
         # Load datasets
         LOG.info("Load new dataset from %s", datafile_new)
@@ -229,10 +204,79 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
         vars_to_save = itertools.chain(range(nskip),range(initial_num_vars, data_new.num_variables))
         write_dataset(datafile_out, data_new, variables=vars_to_save, zones=zone_new)
 
-    finally:
-        # Restore global state
-        tp.active_page().delete_frame(frame_new)
-        tp.active_page().delete_frame(frame_old)
+def export_pages(output_dir, prefix='', width=600, supersample=2,
+                 yvar=None, cvar=None, rescale=False, num_contour=21):
+    ''' Export all pages in the current layout to <page_name>.png '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+    os.makedirs(output_dir, exist_ok=True)
+    for page in tp.pages():
+        page.activate()
+        for frame in page.frames():
+            LOG.debug("Pre-process frame %s on page %s", frame.name, page.name)
+            if yvar:
+                set_linemap_yvariable(frame, yvar)
+            if cvar:
+                set_contour_variable(frame, cvar)
+            if rescale:
+                rescale_frame(frame, num_contour)
+        outfile = os.path.join(output_dir, prefix + page.name + ".png")
+        LOG.info("Export page %s to %s", page.name, outfile)
+        tp.export.save_png(
+            outfile, width,
+            region = tpc.ExportRegion.AllFrames,
+            supersample = supersample
+        )
+
+def rename_variables(datafile_in, datafile_out, name_map):
+    ''' Rename variables in a dataset '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+    with temp_frame() as frame:
+
+        # Create frame to hold data. This modifies the global state of
+        # the tecplot module and must be undone in the "finally" block.
+        frame = tp.active_page().add_frame()
+
+        # Load the dataset
+        LOG.info("Load dataset %s", datafile_in)
+        dataset = tp.data.load_tecplot(
+            datafile_in,
+            frame = frame,
+            initial_plot_type = tpc.PlotType.Cartesian3D
+        )
+
+        # Rename the variables
+        for old_name, new_name in name_map.items():
+            var = dataset.variable(old_name)
+            var.name = new_name
+            LOG.info("Rename %d-th variable '%s' to '%s'", var.index, old_name, new_name)
+
+        # Save results
+        write_dataset(datafile_out, dataset)
+
+def rename_zones(datafile_in, datafile_out, name_map):
+    ''' Rename zones in a dataset '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+    with temp_frame() as frame:
+
+        # Load the dataset
+        LOG.info("Load dataset %s", datafile_in)
+        dataset = tp.data.load_tecplot(
+            datafile_in,
+            frame = frame,
+            initial_plot_type = tpc.PlotType.Cartesian3D
+        )
+
+        # Rename the variables
+        for old_name, new_name in name_map.items():
+            zone = dataset.zone(old_name)
+            zone.name = new_name
+            LOG.info("Rename %d-th zone '%s' to '%s'", zone.index, old_name, new_name)
+
+        # Save results
+        write_dataset(datafile_out, dataset)
 
 def slice_surfaces(slice_file, datafile_in, datafile_out):
     ''' Extract slice zones from a datafile of surface zones.
