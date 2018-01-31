@@ -110,6 +110,25 @@ def stats(args):
                   .format(vname+',', i, stats.min, stats.max, stats.mean, width=width))
     print()
 
+def rename_vars(args):
+    ''' Rename variables within the dataset. '''
+    print(args)
+    name_map = dict([np.split('=') for np in args.name_pairs])
+    tec_util.rename_variables(
+        args.datafile_in,
+        args.datafile_out,
+        name_map
+    )
+
+def rename_zones(args):
+    ''' Rename variables within the dataset. '''
+    name_map = dict([np.split('=') for np in args.name_pairs])
+    tec_util.rename_zones(
+        args.datafile_in,
+        args.datafile_out,
+        name_map
+    )
+
 def to_ascii(args):
     ''' Convert a Tecplot datafile to ascii format '''
     import tecplot as tp
@@ -136,7 +155,7 @@ def configure_diff_parser(parser):
         help = "file to be used as baseline",
     )
     parser.add_argument(
-        "datafile_out",
+        '-o', '--datafile_out',
         help = "file where differences are saved (def: diff.plt)",
         nargs = "?",
         default = "diff.plt",
@@ -167,7 +186,7 @@ def configure_export_parser(parser):
         help = "path to layout file to be processed"
     )
     parser.add_argument(
-        "output_dir",
+        "--output_dir", "-o",
         help = "location where PNG files will be saved (def: '.')",
         nargs = "?",
         default = ".",
@@ -220,19 +239,52 @@ def configure_info_parser(parser):
         help = "file to print metadata for",
     )
 
+def configure_rename_vars_parser(parser):
+    parser.add_argument(
+        "datafile_in",
+        help = "input dataset",
+    )
+    parser.add_argument(
+        "name_pairs",
+        metavar = "name_pair",
+        help = "rename specifier <old_name>=<new_name>",
+        nargs = "+",
+    )
+    parser.add_argument(
+        "-o", "--datafile_out",
+        help = "file where renamed dataset is saved (def: renamed.plt)",
+        default = "renamed.plt",
+    )
+
+def configure_rename_zones_parser(parser):
+    parser.add_argument(
+        "datafile_in",
+        help = "input dataset",
+    )
+    parser.add_argument(
+        "name_pairs",
+        metavar = "name_pair",
+        help = "rename specifier <old_name>=<new_name>",
+        nargs = "+",
+    )
+    parser.add_argument(
+        "-o", "--datafile_out",
+        help = "file where renamed dataset is saved (def: renamed.plt)",
+        default = "renamed.plt",
+    )
+
 def configure_slice_parser(parser):
     parser.add_argument(
         "slice_file",
-        help = "file defining the slices to be generated"
+        help = "file defining the slices to be generated",
     )
     parser.add_argument(
         "datafile_in",
         help = "file with surface data to be processed",
     )
     parser.add_argument(
-        "datafile_out",
+        "-o", "--datafile_out",
         help = "file where extracted slices will be saved (def: slices.plt)",
-        nargs = "?",
         default = "slices.plt",
     )
 
@@ -254,9 +306,8 @@ def configure_to_ascii_parser(parser):
         help = "file to be converted",
     )
     parser.add_argument(
-        "datafile_out",
+        "-o", "--datafile_out",
         help = "file where ascii data is saved (def: dataset.dat)",
-        nargs = "?",
         default = "dataset.dat",
     )
 
@@ -266,9 +317,8 @@ def configure_to_plt_parser(parser):
         help = "file to be converted",
     )
     parser.add_argument(
-        "datafile_out",
+        "-o", "--datafile_out",
         help = "file where binary data is saved (def: dataset.plt)",
-        nargs = "?",
         default = "dataset.plt",
     )
 
@@ -306,14 +356,16 @@ def build_parser():
 
     # Subcommand parsers
     cmds = {
-        # name        function   parser
-        'diff':     ( diff,      configure_diff_parser     ),
-        'export':   ( export,    configure_export_parser   ),
-        'info':     ( info,      configure_info_parser     ),
-        'slice':    ( slice,     configure_slice_parser    ),
-        'stats':    ( stats,     configure_stats_parser    ),
-        'to_ascii': ( to_ascii,  configure_to_ascii_parser ),
-        'to_plt':   ( to_plt,    configure_to_plt_parser   ),
+        # name            function       parser
+        'diff':         ( diff,          configure_diff_parser         ),
+        'export':       ( export,        configure_export_parser       ),
+        'info':         ( info,          configure_info_parser         ),
+        'slice':        ( slice,         configure_slice_parser        ),
+        'stats':        ( stats,         configure_stats_parser        ),
+        'rename_vars':  ( rename_vars,   configure_rename_vars_parser  ),
+        'rename_zones': ( rename_zones,  configure_rename_zones_parser ),
+        'to_ascii':     ( to_ascii,      configure_to_ascii_parser     ),
+        'to_plt':       ( to_plt,        configure_to_plt_parser       ),
     }
     for name, (action, configure_func) in cmds.items():
         sp = subparsers.add_parser(
