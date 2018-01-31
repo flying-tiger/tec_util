@@ -66,8 +66,13 @@ def info(args):
         print(leader + info.format(zone))
 
     print("\nVariable Info:")
+    max_len = max([len(v.name) for v in dataset.variables()])
     for var in dataset.variables():
-        print(" [{0.index:^3d}] {0.name}".format(var))
+        vmin,vmax = float('inf'), -float('inf')
+        for i in range(var.num_zones):
+            vmin = min(vmin, var.values(i).min)
+            vmax = max(vmax, var.values(i).max)
+        print(" [{0.index:^3d}] {0.name:{1}s} ({2:12.4e},{3:12.5e})".format(var, max_len+3, vmin, vmax))
 
     print("\nTimepoint Info:")
     if has_times and dataset.num_solution_times > 0:
