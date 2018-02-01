@@ -112,7 +112,6 @@ def stats(args):
 
 def rename_vars(args):
     ''' Rename variables within the dataset. '''
-    print(args)
     name_map = dict([np.split('=') for np in args.name_pairs])
     tec_util.rename_variables(
         args.datafile_in,
