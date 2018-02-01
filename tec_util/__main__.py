@@ -220,7 +220,7 @@ def configure_export_parser(parser):
     )
     parser.add_argument(
         "--rescale",
-        help = "rescales colormaps and y-axes to fit data (def: false)",
+        help = "rescales colormaps and x,y axes to fit data (def: false)",
         default = False,
         action = 'store_true',
     )

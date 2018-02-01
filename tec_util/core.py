@@ -17,7 +17,7 @@ LOG = logging.getLogger(__name__)
 # Helper Functions
 #-----------------------------------------------------------------------
 def rescale_frame(frame, num_contour):
-    ''' Rescale 1st colormap for 2D and 3D plots, 1st y-axis for XY plots '''
+    ''' Rescale 1st colormap for 2D and 3D plots, 1st xy-axes for XY plots '''
     import tecplot.constant as tpc
     plot = frame.plot()
     if (frame.plot_type == tpc.PlotType.Cartesian3D or  \
@@ -32,6 +32,8 @@ def rescale_frame(frame, num_contour):
     elif frame.plot_type == tpc.PlotType.XYLine:
         LOG.debug("Rescale first Y axis")
         plot.axes.y_axis(0).fit_range_to_nice()
+        LOG.debug("Rescale first X axis")
+        plot.axes.x_axis(0).fit_range_to_nice()
 
 def set_linemap_yvariable(frame, yvar):
     ''' Set y_variable for all linemaps using the 1st y-axis '''
