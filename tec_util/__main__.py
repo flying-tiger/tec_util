@@ -89,6 +89,14 @@ def info(args):
         print(" None")
     print()
 
+def interp(args):
+    ''' Inverse-distance interpolation of dataset onto a new grid. '''
+    tec_util.interpolate_dataset(
+        args.datafile_src,
+        args.datafile_tgt,
+        args.datafile_out,
+    )
+
 def slice(args):
     ''' Extract slices from dataset of surfaces zones. '''
     tec_util.slice_surfaces(
@@ -238,6 +246,22 @@ def configure_info_parser(parser):
         help = "file to print metadata for",
     )
 
+def configure_interp_parser(parser):
+    parser.add_argument(
+        'datafile_src',
+        help = "dataset to be interpolated",
+    )
+    parser.add_argument(
+        'datafile_tgt',
+        help = "target grid to be populated",
+    )
+    parser.add_argument(
+        '-o', '--datafile_out',
+        help = "file where differences are saved (def: interp.plt)",
+        nargs = "?",
+        default = "interp.plt",
+    )
+
 def configure_rename_vars_parser(parser):
     parser.add_argument(
         "datafile_in",
@@ -359,6 +383,7 @@ def build_parser():
         'diff':         ( diff,          configure_diff_parser         ),
         'export':       ( export,        configure_export_parser       ),
         'info':         ( info,          configure_info_parser         ),
+        'interp':       ( interp,        configure_interp_parser       ),
         'slice':        ( slice,         configure_slice_parser        ),
         'stats':        ( stats,         configure_stats_parser        ),
         'rename_vars':  ( rename_vars,   configure_rename_vars_parser  ),
@@ -377,9 +402,9 @@ def build_parser():
 
     return parser
 
-def main():
+def main(args):
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     logging.getLogger('tec_util').setLevel(args.loglevel)
     if "func" in args:
         args.func(args)
@@ -389,5 +414,5 @@ def main():
         os.remove("batch.log")
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
 

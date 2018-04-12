@@ -114,3 +114,17 @@ class TestRenameZones(unittest.TestCase):
             self.assertEqual(ds.zone(0).name, "front")
             self.assertEqual(ds.zone(5).name, "bottom")
 
+class TestInterpolate(unittest.TestCase):
+    ''' Unit test for the interpolate_datasets function '''
+
+    def test_basic_function(self):
+        with test.temp_workspace():
+            tec_util.interpolate_dataset(
+                test.data_item_path("interp_src.dat"),
+                test.data_item_path("interp_tgt.dat"),
+                "interp_out.plt",
+            )
+            ds = load_and_replace("interp_out.plt")
+            vrange = ds.variable("r").values(0).minmax
+            self.assertAlmostEqual(max(vrange), 6.39408e-01, delta=1e-6)
+            self.assertAlmostEqual(min(vrange), 5.10930e-01, delta=1e-6)

@@ -230,6 +230,49 @@ def export_pages(output_dir, prefix='', width=600, supersample=2,
             supersample = supersample
         )
 
+def interpolate_dataset(datafile_src, datafile_tgt, datafile_out):
+    ''' Interpolate variables from one dataset onto another (3D only)
+
+        INPUTS:
+            datafile_src    Path to datafile to be interpolated
+            datafile_tgt    Path to datafile with interpolation coordintes
+            datafile_out    Path where datafile with interpolated data is saved
+
+        OUTPUTS:
+            none
+    '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+    with temp_frame() as frame:
+
+        # Load datasets
+        LOG.info("Load source dataset from %s", datafile_src)
+        data = tp.data.load_tecplot(
+            datafile_src,
+            frame = frame,
+            initial_plot_type = tpc.PlotType.Cartesian3D,
+        )
+        nzone_src = data.num_zones
+        LOG.info("Load target dataset from %s", datafile_tgt)
+        tp.data.load_tecplot(
+            datafile_tgt,
+            frame = frame,
+            read_data_option = tpc.ReadDataOption.Append,
+        )
+
+        # Perform interpolation
+        src_zones = [data.zone(i) for i in range(nzone_src)]
+        tgt_zones = [data.zone(i) for i in range(nzone_src, data.num_zones)]
+        for zone in tgt_zones:
+            tp.data.operate.interpolate_inverse_distance(
+                destination_zone = zone,
+                source_zones = src_zones,
+            )
+
+        # Save results
+        write_dataset(datafile_out, data, zones=tgt_zones)
+
+
 def rename_variables(datafile_in, datafile_out, name_map):
     ''' Rename variables in a dataset '''
     import tecplot as tp
