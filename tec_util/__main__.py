@@ -108,14 +108,22 @@ def slice(args):
 def stats(args):
     ''' Extract zone max/min/averages for each variable. '''
     stats = tec_util.compute_statistics(args.datafile_in, args.variables)
-    columns = ['Variable,','Zone','Min', 'Max', 'Mean']
-    width = max(len(columns[0]), max([len(k) for k in stats])+1)
-    print('{:{width}s} {:4s}, {:>15s}, {:>15s}, {:>15s}'
-          .format(*columns, width=width))
+    columns = ['Variable,', 'ZoneID', 'Zone,', 'Min', 'Max', 'Mean']
+    var_width  = max(len(columns[0]), max([len(k) for k in stats])+1)
+    zone_width = max(len(columns[2]), max([len(z) for z in next(iter(stats.values()))])+1)
+    print(
+        '{:{var_width}s} {:4s}, {:{zone_width}s} {:>15s}, {:>15s}, {:>15s}'
+        .format(*columns, var_width=var_width, zone_width=zone_width),
+    )
     for vname, zone_stats in stats.items():
-        for i, stats in enumerate(zone_stats):
-            print('{:{width}s} {:4d}, {:15.6e}, {:15.6e}, {:15.6e}'
-                  .format(vname+',', i, stats.min, stats.max, stats.mean, width=width))
+        for i, (zname, stats) in enumerate(zone_stats.items()):
+            print(
+                '{:{var_width}s} {:7s} {:{zone_width}s} {:15.6e}, {:15.6e}, {:15.6e}'
+                .format(
+                    vname+',', str(i)+',', zname+',', stats.min, stats.max, stats.mean,
+                    var_width=var_width, zone_width=zone_width,
+                )
+            )
     print()
 
 def rename_vars(args):

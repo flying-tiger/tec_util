@@ -79,7 +79,18 @@ def write_dataset(filename, dataset, **kwargs):
 # API Functions
 #-----------------------------------------------------------------------
 def compute_statistics(datafile_in, variable_patterns=None):
-    ''' Compute min/max/mean for each variable/zone combination '''
+    ''' Compute min/max/mean for each variable/zone combination
+
+    Arguments:
+        datafile_in        [str]  Path of Tecplot datafile
+        variable_patterns  [list(str)] Names of variable to be analyzed.
+                           Wildcard patterns are allowed.
+
+    Returns:
+        stats_info         [dict(dict(stats_tuple))] Data structure with
+                           max/min/mean for every variable/zone combination
+                           e.g. stats_info[var][zone].max
+    '''
     import tecplot as tp
     import tecplot.constant as tpc
     with temp_frame() as frame:
@@ -107,10 +118,10 @@ def compute_statistics(datafile_in, variable_patterns=None):
         var_stats = {}
         stats_tuple = collections.namedtuple('ZoneStats',['max','min','mean'])
         for var in variables:
-            zone_stats = []
+            zone_stats = {}
             for zone in dataset.zones():
                 data = dataset.variable(var.index).values(zone.index)
-                zone_stats.append(stats_tuple(data.max, data.min, mean(data[:])))
+                zone_stats[zone.name] = stats_tuple(data.max, data.min, mean(data[:]))
             var_stats[var.name] = zone_stats
 
     return var_stats
