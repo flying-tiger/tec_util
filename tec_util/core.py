@@ -87,9 +87,9 @@ def compute_statistics(datafile_in, variable_patterns=None):
                            Wildcard patterns are allowed.
 
     Returns:
-        stats_info         [dict(dict(stats_tuple))] Data structure with
+        stats_info         [dict(list(stats_tuple))] Data structure with
                            max/min/mean for every variable/zone combination
-                           e.g. stats_info[var][zone].max
+                           e.g. stats_info[var_name][zone_id].max
     '''
     import tecplot as tp
     import tecplot.constant as tpc
@@ -116,12 +116,12 @@ def compute_statistics(datafile_in, variable_patterns=None):
 
         # Compute per-zone statistics
         var_stats = {}
-        stats_tuple = collections.namedtuple('ZoneStats',['max','min','mean'])
+        stats_tuple = collections.namedtuple('ZoneStats',['name','max','min','mean'])
         for var in variables:
-            zone_stats = {}
+            zone_stats = []
             for zone in dataset.zones():
                 data = dataset.variable(var.index).values(zone.index)
-                zone_stats[zone.name] = stats_tuple(data.max, data.min, mean(data[:]))
+                zone_stats.append(stats_tuple(zone.name, data.max, data.min, mean(data[:])))
             var_stats[var.name] = zone_stats
 
     return var_stats
@@ -282,7 +282,6 @@ def interpolate_dataset(datafile_src, datafile_tgt, datafile_out):
 
         # Save results
         write_dataset(datafile_out, data, zones=tgt_zones)
-
 
 def rename_variables(datafile_in, datafile_out, name_map):
     ''' Rename variables in a dataset '''

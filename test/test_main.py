@@ -11,8 +11,8 @@ class TestMain(unittest.TestCase):
     ''' Tests for the main program '''
 
     def test_interp(self):
-            ''' Make sure interp command works '''
-            #with test.temp_workspace():
+        ''' Make sure interp command works '''
+        with test.temp_workspace():
             main([
                 'interp',
                 test.data_item_path('interp_src.dat'),
