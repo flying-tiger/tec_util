@@ -2,6 +2,7 @@ import collections
 import itertools
 import logging
 import math
+import numpy as np
 import os
 import sys
 import tempfile
@@ -142,11 +143,6 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
     '''
     import tecplot as tp
     import tecplot.constant as tpc
-    try:
-        from numpy import subtract
-    except:
-        def subtract(x_arr,y_arr):
-            return [x-y for x,y in zip(a_arr,y_arr)]
 
     with temp_frame() as frame_new, temp_frame() as frame_old:
 
@@ -202,7 +198,7 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
             delta = data_new.add_variable("delta_" + vnew.name)
             for znew, zold in zip(zone_new, zone_old):
                 try:
-                    delta.values(znew.index)[:] = subtract(
+                    delta.values(znew.index)[:] = np.subtract(
                         vnew.values(znew.index)[:],
                         vold.values(zold.index)[:],
                     )
@@ -332,6 +328,120 @@ def rename_zones(datafile_in, datafile_out, name_map):
 
         # Save results
         write_dataset(datafile_out, dataset)
+
+def revolve_dataset(datafile_in, datafile_out, radial_coord=None, planes=65, angle=180.0, vector_vars=None):
+    ''' Create a 3D dataset by revolving a 2D dataset. Supports vector quantities.
+
+    Arguments:
+        datafile_in    Path to 2D datafile to be revolved
+        datafile_old   Path to 3D datafile to be written
+        radial_coord   Name of variable to use as the radial grid coordinate. If
+                       unspecifed, the second variable in the dataset will be used.
+                       In the output dataset, this variable will be overwritten with
+                       radial_coord*cos(theta) and an new variable, "z", will be set
+                       equal to radial_coord*sin(theta). If you do not want to over-
+                       write the radial grid coordinate, or if you wish to control
+                       the naming of the "z" coordinate, you may pass a dictionary
+                       as described for in "vector_vars".
+        planes         Number of data planes in the revolved grid (def: 65)
+        angle          Angle (in degrees) that revolved grid will span (def: 180.0)
+        vector_vars    List or dict of strings specifying variables in the dataset
+                       that should be treated as vector quantities when revolved. If
+                       given a list of variables, two variables "<var>_y","<var>_z"
+                       will be created and set equal to <var>*cos(theta) and
+                       <var>*sin(theta), respectively. If you wish to control the
+                       naming the variables created, pass a dict that maps to a name
+                       tuple, e.g. { 'r': ('x','y'), 'vr': ('vx','vy') }. Note that
+                       if a key appears in the name tuple, e.g {'y':('y','z')}, only
+                       one new variable is added and the old 'y' is re-used/overwritten.
+
+    Limitations:
+        Only works for block-structured grids.
+        All variable names in the dataset must be unique.
+
+    '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+
+    if vector_vars:
+        if isinstance(vector_vars,list):
+            vector_vars = { v:(v+'_y',v+'_z') for v in vector_vars }
+    else:
+        vector_vars = {}
+
+    with temp_frame() as frame_in, temp_frame() as frame_out:
+
+        # Load input dataset
+        LOG.info("Load input dataset from %s", datafile_in)
+        frame_in.activate()
+        data_in = tp.data.load_tecplot(datafile_in, frame=frame_in)
+        vars_in = [v.name for v in data_in.variables()]
+        assert len(vars_in) == len(set(vars_in)), \
+               f'ERROR: Cannot revolve {datafile_in}. All variables must have unique names.'
+
+        # Select the radial coordinate and add to vector_vars
+        zname = 'z'
+        default_zname = False
+        if not radial_coord:
+            radial_coord = vars_in[1]
+        if isinstance(radial_coord,str):
+            radial_coord = { radial_coord: (radial_coord, zname) }
+            default_zname = True
+        vector_vars = { **radial_coord, **vector_vars }
+
+        # Check that radial coordinate and the new out-of-plane coordiante make sense
+        rname = list(radial_coord.keys())[0]
+        assert rname in vars_in, \
+               f'ERROR: User-specified radial coordinate {rname} does not exist in dataset!'
+        if default_zname:
+            assert not zname in vars_in, \
+                   f'ERROR: New coordinate "{zname}" will clobber existing variable! ' \
+                   'Please use a dict argument to radial_coord to specify coordinate names.'
+
+        # Check the vector_vars mapping
+        for v in vector_vars:
+            assert v in vars_in, \
+                   f'ERROR: User requested vector variable {v} not present in dataset.'
+
+        # Initialize output dataset and construct variable list
+        data_out = frame_out.create_dataset('anchor3d')
+        for v in vars_in:
+            data_out.add_variable(v)
+            if v in vector_vars:
+                LOG.info(f'Using variable {v} as a vector-valued variable.')
+                for component in vector_vars[v]:
+                    if not component in vars_in:
+                        LOG.info(f'Adding vector component variable "{component}" to the dataset')
+                        data_out.add_variable(component)
+
+        # Compute sine/cosine for each data plane
+        t = np.linspace(0.0, np.radians(angle), planes)
+        st = np.sin(t)
+        ct = np.cos(t)
+
+        # Construct all zones and revolve data
+        for zin in data_in.zones():
+            assert isinstance(zin, tp.data.OrderedZone), \
+                   f'ERROR: Cannot revolve zone "{zin.name}". Must be an OrderedZone.'
+            assert zin.rank < 3, \
+                   f'ERROR: Cannot revolve zone "{zin.name}". Must be rank 1 or 2.'
+            zout = data_out.add_ordered_zone(zin.name, [*zin.dimensions[0:zin.rank], planes])
+            npt  = np.prod(zin.dimensions)
+            for v in vars_in:
+                vals_in  = zin.values(v)
+                vals_out = zout.values(v)
+                for k in range(planes):
+                    vals_out[k*npt:(k+1)*npt] = vals_in[:]
+                if v in vector_vars:
+                    vy,vz  = vector_vars[v]
+                    vals_y = zout.values(vy)
+                    vals_z = zout.values(vz)
+                    for k in range(planes):
+                        vals_y[k*npt:(k+1)*npt] = np.multiply(vals_in[:],ct[k])
+                        vals_z[k*npt:(k+1)*npt] = np.multiply(vals_in[:],st[k])
+
+        # Write output
+        write_dataset(datafile_out, data_out)
 
 def slice_surfaces(slice_file, datafile_in, datafile_out):
     ''' Extract slice zones from a datafile of surface zones.

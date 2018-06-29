@@ -1,3 +1,4 @@
+import math
 import tecplot as tp
 import tecplot.constant as tpc
 import tec_util
@@ -113,6 +114,116 @@ class TestRenameZones(unittest.TestCase):
             ds = load_and_replace("cube.dat")
             self.assertEqual(ds.zone(0).name, "front")
             self.assertEqual(ds.zone(5).name, "bottom")
+
+class TestRevolveDataset(unittest.TestCase):
+    ''' Unit test for the revolve_dataset function '''
+
+    def test_basic_useage(self):
+        ''' Test that we can revolve a dataset and get the correct file out '''
+        with test.temp_workspace():
+            tec_util.revolve_dataset(
+                test.data_item_path("axi_sphere.plt"),
+                "sphere.plt",
+                planes = 13,
+                angle  = 90.0,
+            )
+            ds = load_and_replace("sphere.plt")
+            vars = [v.name for v in ds.variables()]
+            self.assertEqual(vars,['x','y','z','q1','q2','v1','v2'])
+            self.assertEqual(ds.zone(0).dimensions,(11,9,13))
+            self.assertEqual(
+                ds.zone(0).values('y').minmax,
+                ds.zone(0).values('z').minmax
+            )
+
+    def test_radial_coord(self):
+        ''' Verify ability to select the radial coordinate '''
+        with test.temp_workspace():
+            tec_util.revolve_dataset(
+                test.data_item_path("axi_sphere.plt"),
+                "sphere.plt",
+                radial_coord = 'v2',
+                planes = 13,
+                angle  = 90.0,
+            )
+            ds = load_and_replace("sphere.plt")
+            vars = [v.name for v in ds.variables()]
+            self.assertEqual(vars,['x','y','q1','q2','v1','v2','z'])
+            self.assertEqual(
+                ds.zone(0).values('v2').minmax,
+                ds.zone(0).values('z').minmax,
+            )
+
+            tec_util.revolve_dataset(
+                test.data_item_path("axi_sphere.plt"),
+                "sphere.plt",
+                radial_coord = {'v2':('ry','rz')},
+                planes = 13,
+                angle  = 90.0,
+            )
+            ds = load_and_replace("sphere.plt")
+            vars = [v.name for v in ds.variables()]
+            self.assertEqual(vars,['x','y','q1','q2','v1','v2','ry','rz'])
+            self.assertEqual(
+                ds.zone(0).values('v2').minmax,
+                ds.zone(0).values('ry').minmax,
+            )
+            self.assertEqual(
+                ds.zone(0).values('v2').minmax,
+                ds.zone(0).values('rz').minmax,
+            )
+
+    def test_vector_vars(self):
+        ''' Verify we can specify variable to treat as vector quantities '''
+        with test.temp_workspace():
+            tec_util.revolve_dataset(
+                test.data_item_path("axi_sphere.plt"),
+                "sphere.plt",
+                planes = 13,
+                angle  = 90.0,
+                vector_vars = ['v1','v2'],
+            )
+            ds = load_and_replace("sphere.plt")
+            vars = [v.name for v in ds.variables()]
+            self.assertEqual(vars,['x','y','z','q1','q2','v1','v1_y','v1_z','v2','v2_y','v2_z'])
+            z0 = ds.zone(0)
+            self.assertEqual(z0.values('v1').minmax, z0.values('v1_y').minmax)
+            self.assertEqual(z0.values('v1').minmax, z0.values('v1_z').minmax)
+
+            tec_util.revolve_dataset(
+                test.data_item_path("axi_sphere.plt"),
+                "sphere.plt",
+                planes = 13,
+                angle  = 90.0,
+                vector_vars = {
+                    'v1' : ('v1y','v1z'),
+                    'v2' : ('v2y','v2z'),
+                },
+            )
+            ds = load_and_replace("sphere.plt")
+            vars = [v.name for v in ds.variables()]
+            self.assertEqual(vars,['x','y','z','q1','q2','v1','v1y','v1z','v2','v2y','v2z'])
+            z0 = ds.zone(0)
+            self.assertEqual(z0.values('v1').minmax, z0.values('v1y').minmax)
+            self.assertEqual(z0.values('v1').minmax, z0.values('v1z').minmax)
+
+    def test_surface_grid(self):
+        ''' Verify we can create a surface by revoling a 1D generatrix '''
+        with test.temp_workspace():
+            tec_util.revolve_dataset(
+                test.data_item_path("axi_sphere_surf.plt"),
+                "sphere.plt",
+                planes = 13,
+                angle  = 90.0,
+            )
+            ds = load_and_replace("sphere.plt")
+            vars = [v.name for v in ds.variables()]
+            self.assertEqual(vars,['x','y','z','q1','q2','v1','v2'])
+            self.assertEqual(ds.zone(0).dimensions,(11,13,1))
+            self.assertEqual(
+                ds.zone(0).values('y').minmax,
+                ds.zone(0).values('z').minmax
+            )
 
 class TestInterpolate(unittest.TestCase):
     ''' Unit test for the interpolate_datasets function '''
