@@ -22,3 +22,28 @@ class TestMain(unittest.TestCase):
             vrange = ds.variable("r").values(0).minmax
             self.assertAlmostEqual(max(vrange), 6.39408e-01, delta=1e-6)
             self.assertAlmostEqual(min(vrange), 5.10930e-01, delta=1e-6)
+
+    def test_revolve(self):
+        ''' Make sure revolve command works '''
+        with test.temp_workspace():
+            main([
+                'revolve',
+                test.data_item_path('axi_sphere_surf.plt'),
+                '-o', 'axi_sphere_rev.dat',
+                '-n', '25',
+                '-a', '90.0',
+                '-r', 'v1',
+                '-v', 'v2:v2y,v2z',
+                '-v', 'q2',
+            ]),
+            ds = load_and_replace('axi_sphere_rev.dat')
+            vs = [v.name for v in ds.variables()]
+            self.assertEqual(vs,[
+                'x', 'y', 'q1',
+                'q2', 'q2_cos', 'q2_sin',
+                'v1', 'z',
+                'v2', 'v2y', 'v2z',
+            ])
+            self.assertEqual(ds.zone(0).dimensions, (11,25,1))
+
+

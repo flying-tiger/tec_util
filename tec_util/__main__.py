@@ -149,6 +149,25 @@ def rename_zones(args):
         name_map
     )
 
+def revolve(args):
+    ''' Create a 3D surface|volume by revoling a 2D curve|plane '''
+
+    # Combine all vector-spec dicts into one dict
+    vectors = {}
+    if args.vector:
+        for v in args.vector:
+            vectors.update(v)
+
+    # Dispacth to library
+    tec_util.revolve_dataset(
+        args.datafile_in,
+        args.datafile_out,
+        radial_coord = args.radial_coord,
+        planes       = args.num_planes,
+        angle        = args.angle,
+        vector_vars  = vectors,
+    )
+
 def to_ascii(args):
     ''' Convert a Tecplot datafile to ascii format '''
     import tecplot as tp
@@ -309,6 +328,63 @@ def configure_rename_zones_parser(parser):
         default = "renamed.plt",
     )
 
+def configure_revolve_parser(parser):
+    def coord_spec(arg):
+        ''' Helper for parsing radial_coord arugment. '''
+        name_in,*names_out = arg.split(':')
+        if not names_out:
+            return name_in.strip()
+        else:
+            return vector_spec(arg)
+
+    def vector_spec(arg):
+        ''' Helper function for parsing vector specifiers from command line '''
+        name_in,*names_out = arg.split(':')
+        name_in = name_in.strip()
+        if not names_out:
+            return { name_in : [name_in + '_cos', name_in + '_sin']}
+        else:
+            names_out = names_out[0].split(',')
+            assert len(names_out) == 2, \
+                   f'ERROR: Bad vector argument "{arg}". Rename-part of spec must be' \
+                   'a comma separated pair of strings'
+            return { name_in : names_out }
+
+    parser.add_argument(
+        "datafile_in",
+        help = "input dataset",
+    )
+    parser.add_argument(
+        "-o", "--datafile_out",
+        help = "file where revolved dataset is saved (def: revolve.plt)",
+        default = "revolve.plt",
+    )
+    parser.add_argument(
+        "-n", "--num_planes",
+        help = "number of planes created by revolution (def: 37)",
+        type = int,
+        default = 37,
+    )
+    parser.add_argument(
+        "-a", "--angle",
+        help = "angle of revolution in degrees (def: 180)",
+        type = float,
+        default = 180.0,
+    )
+    parser.add_argument(
+        "-r", "--radial_coord",
+        help = "variable used as radial coordinate (def: 2nd var in dataset)",
+        type = coord_spec,
+        default = None
+    )
+    parser.add_argument(
+        "-v", "--vector",
+        help = "variable to be revolved as a vector, v->(v*cos(t),v*sin(t))",
+        type = vector_spec,
+        action = 'append',
+        default = None
+    )
+
 def configure_slice_parser(parser):
     parser.add_argument(
         "slice_file",
@@ -401,6 +477,7 @@ def build_parser():
         'stats':        ( stats,         configure_stats_parser        ),
         'rename_vars':  ( rename_vars,   configure_rename_vars_parser  ),
         'rename_zones': ( rename_zones,  configure_rename_zones_parser ),
+        'revolve':      ( revolve,       configure_revolve_parser      ),
         'to_ascii':     ( to_ascii,      configure_to_ascii_parser     ),
         'to_plt':       ( to_plt,        configure_to_plt_parser       ),
     }
