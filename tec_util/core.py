@@ -347,13 +347,13 @@ def revolve_dataset(datafile_in, datafile_out, radial_coord=None, planes=65, ang
         angle          Angle (in degrees) that revolved grid will span (def: 180.0)
         vector_vars    List or dict of strings specifying variables in the dataset
                        that should be treated as vector quantities when revolved. If
-                       given a list of variables, two variables "<var>_y","<var>_z"
-                       will be created and set equal to <var>*cos(theta) and
-                       <var>*sin(theta), respectively. If you wish to control the
+                       given a list of variables, two variables "<var>_cos",
+                       "<var>_sin" will be created and set equal to <var>*cos(theta)
+                       and <var>*sin(theta), respectively. If you wish to control the
                        naming the variables created, pass a dict that maps to a name
                        tuple, e.g. { 'r': ('x','y'), 'vr': ('vx','vy') }. Note that
                        if a key appears in the name tuple, e.g {'y':('y','z')}, only
-                       one new variable is added and the old 'y' is re-used/overwritten.
+                       one new variable is added and the 'y' variable is overwritten.
 
     Limitations:
         Only works for block-structured grids.
@@ -365,7 +365,7 @@ def revolve_dataset(datafile_in, datafile_out, radial_coord=None, planes=65, ang
 
     if vector_vars:
         if isinstance(vector_vars,list):
-            vector_vars = { v:(v+'_y',v+'_z') for v in vector_vars }
+            vector_vars = { v:(v+'_cos',v+'_sin') for v in vector_vars }
     else:
         vector_vars = {}
 

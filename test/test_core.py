@@ -185,10 +185,10 @@ class TestRevolveDataset(unittest.TestCase):
             )
             ds = load_and_replace("sphere.plt")
             vars = [v.name for v in ds.variables()]
-            self.assertEqual(vars,['x','y','z','q1','q2','v1','v1_y','v1_z','v2','v2_y','v2_z'])
+            self.assertEqual(vars,['x','y','z','q1','q2','v1','v1_cos','v1_sin','v2','v2_cos','v2_sin'])
             z0 = ds.zone(0)
-            self.assertEqual(z0.values('v1').minmax, z0.values('v1_y').minmax)
-            self.assertEqual(z0.values('v1').minmax, z0.values('v1_z').minmax)
+            self.assertEqual(z0.values('v1').minmax, z0.values('v1_cos').minmax)
+            self.assertEqual(z0.values('v1').minmax, z0.values('v1_sin').minmax)
 
             tec_util.revolve_dataset(
                 test.data_item_path("axi_sphere.plt"),
