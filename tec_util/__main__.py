@@ -10,6 +10,38 @@ logging.basicConfig(
 
 
 #-------------------------------------------------------------------------------
+# Helpers
+#-------------------------------------------------------------------------------
+def dequote(s):
+    ''' Remove leading/trailing quotes from a string '''
+    s = s.strip()
+    if (s[0] == s[-1]) and s.startswith(("'", '"')):
+        return s[1:-1]
+    return s
+
+def coord_spec(arg):
+    ''' Parse radial_coord specifier used by revolve command. '''
+    name_in,*names_out = dequote(arg).split(':')
+    if not names_out:
+        return dequote(name_in)
+    else:
+        return vector_spec(arg)
+
+def vector_spec(arg):
+    ''' Parse vector specifier used by revolve command. '''
+    name_in,*names_out = dequote(arg).split(':')
+    name_in = dequote(name_in)
+    if not names_out:
+        return { name_in : [name_in + '_cos', name_in + '_sin']}
+    else:
+        names_out = [dequote(name) for name in names_out[0].split(',')]
+        assert len(names_out) == 2, \
+               f'ERROR: Bad vector argument "{arg}". Rename-part of spec must be' \
+               'a comma separated pair of strings'
+        return { name_in : names_out }
+
+
+#-------------------------------------------------------------------------------
 # Subcommmands
 #-------------------------------------------------------------------------------
 def diff(args):
@@ -329,27 +361,6 @@ def configure_rename_zones_parser(parser):
     )
 
 def configure_revolve_parser(parser):
-    def coord_spec(arg):
-        ''' Helper for parsing radial_coord arugment. '''
-        name_in,*names_out = arg.split(':')
-        if not names_out:
-            return name_in.strip()
-        else:
-            return vector_spec(arg)
-
-    def vector_spec(arg):
-        ''' Helper function for parsing vector specifiers from command line '''
-        name_in,*names_out = arg.split(':')
-        name_in = name_in.strip()
-        if not names_out:
-            return { name_in : [name_in + '_cos', name_in + '_sin']}
-        else:
-            names_out = names_out[0].split(',')
-            assert len(names_out) == 2, \
-                   f'ERROR: Bad vector argument "{arg}". Rename-part of spec must be' \
-                   'a comma separated pair of strings'
-            return { name_in : names_out }
-
     parser.add_argument(
         "datafile_in",
         help = "input dataset",

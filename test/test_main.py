@@ -46,4 +46,46 @@ class TestMain(unittest.TestCase):
             ])
             self.assertEqual(ds.zone(0).dimensions, (11,25,1))
 
+    def test_revolve_quotes(self):
+        ''' Make sure we can read arguments in quoted strings '''
+        with test.temp_workspace():
 
+            # Support various kinds of quoting
+            main([
+                'revolve',
+                test.data_item_path('axi_sphere_surf.plt'),
+                '-o', 'axi_sphere_rev.dat',
+                '-n', '25',
+                '-a', '90.0',
+                '-r', 'v1',
+                '-v', '"v2":\'v2y\',v2z',
+                '-v', 'q2',
+            ]),
+            ds = load_and_replace('axi_sphere_rev.dat')
+            vs = [v.name for v in ds.variables()]
+            self.assertEqual(vs,[
+                'x', 'y', 'q1',
+                'q2', 'q2_cos', 'q2_sin',
+                'v1', 'z',
+                'v2', 'v2y', 'v2z',
+            ])
+
+            # Support quoting the full argument
+            main([
+                'revolve',
+                test.data_item_path('axi_sphere_surf.plt'),
+                '-o', 'axi_sphere_rev.dat',
+                '-n', '25',
+                '-a', '90.0',
+                '-r', 'v1',
+                '-v', '"v2:v2y,v2z"',
+                '-v', 'q2',
+            ]),
+            ds = load_and_replace('axi_sphere_rev.dat')
+            vs = [v.name for v in ds.variables()]
+            self.assertEqual(vs,[
+                'x', 'y', 'q1',
+                'q2', 'q2_cos', 'q2_sin',
+                'v1', 'z',
+                'v2', 'v2y', 'v2z',
+            ])
