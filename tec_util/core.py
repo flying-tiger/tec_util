@@ -17,6 +17,34 @@ LOG = logging.getLogger(__name__)
 #-----------------------------------------------------------------------
 # Helper Functions
 #-----------------------------------------------------------------------
+def get_variables(ds, patterns=None):
+    ''' Return list of variable objects matching specified patterns '''
+    if not patterns or isinstance(patterns,str):
+        # Allows bare string input when only one pattern needed
+        result = list(ds.variables(patterns))
+    else:
+        matches = {}
+        for p in patterns:
+            for v in ds.variables(p):
+                matches[v.name] = v
+        result = list(matches.values())
+    assert result, f"No variables in dataset matching {' '.join(patterns)}"
+    return result
+
+def get_zones(ds, patterns=None):
+    ''' Return list of zone objects matching specified patterns '''
+    if not patterns or isinstance(patterns,str):
+        # Allows bare string input when only one pattern needed
+        result = list(ds.zones(patterns))
+    else:
+        matches = {}
+        for p in patterns:
+            for z in ds.zones(p):
+                matches[z.name] = z
+        result = list(matches.values())
+    assert result, f"No zones in dataset matching {' '.join(patterns)}"
+    return result
+
 def rescale_frame(frame, num_contour):
     ''' Rescale 1st colormap for 2D and 3D plots, 1st xy-axes for XY plots '''
     import tecplot.constant as tpc
@@ -79,12 +107,14 @@ def write_dataset(filename, dataset, **kwargs):
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
-def compute_statistics(datafile_in, variable_patterns=None):
+def compute_statistics(datafile_in, variable_patterns=None, zone_patterns=None):
     ''' Compute min/max/mean for each variable/zone combination
 
     Arguments:
         datafile_in        [str]  Path of Tecplot datafile
         variable_patterns  [list(str)] Names of variable to be analyzed.
+                           Wildcard patterns are allowed.
+        zone_patterns      [list(str)] Names of zones to be analyzed.
                            Wildcard patterns are allowed.
 
     Returns:
@@ -104,38 +134,33 @@ def compute_statistics(datafile_in, variable_patterns=None):
             initial_plot_type = tpc.PlotType.Cartesian3D
         )
 
-        # Get all variables matching given patterns
-        if variable_patterns:
-            variables = {}
-            for pattern in variable_patterns:
-                for var in dataset.variables(pattern):
-                    variables[var.name] = var
-            variables = variables.values()
-        else:
-            variables = list(dataset.variables())
+        # Get all variables/zones matching requested patterns
+        variables = get_variables(ds, variable_patterns)
         LOG.info("Generating statisitics for: %s", ' '.join([v.name for v in variables]))
+        zones = get_zones(ds, zone_patterns)
+        LOG.info("Gathering statisitics from: %s", ' '.join([z.name for z in zones]))
 
         # Compute per-zone statistics
         var_stats = {}
         stats_tuple = collections.namedtuple('ZoneStats',['name','max','min','mean'])
         for var in variables:
             zone_stats = []
-            for zone in dataset.zones():
+            for zone in zones:
                 data = dataset.variable(var.index).values(zone.index)
                 zone_stats.append(stats_tuple(zone.name, data.max, data.min, mean(data[:])))
             var_stats[var.name] = zone_stats
 
     return var_stats
 
-def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="*", var_pattern="*", nskip=3):
+def difference_datasets(datafile_new, datafile_old, datafile_out, zone_patterns=None, var_patterns=None, nskip=3):
     ''' Compute variable-by-variable difference between datasets.
 
         INPUTS:
             datafile_new    Path to datafile to be differenced
             datafile_old    Path to datafile to use a baseline
             datafile_out    Path where datafile of differences is saved
-            zone_pattern    Glob pattern for selecting zones to difference (def: "*")
-            var_pattern     Glob pattern for selecting variables to difference (def: "*")
+            zone_patterns   List of glob pattern specifying zones to difference (def: all)
+            var_patterns    List of glob pattern specifying variables to difference (def: all)
             nskip           Number of variables at start of file to skip (def:3)
 
         OUTPUTS:
@@ -153,8 +178,8 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
         data_old = tp.data.load_tecplot(datafile_old, frame = frame_old)
 
         # Get variable information
-        var_new = list(data_new.variables(var_pattern))
-        var_old = list(data_old.variables(var_pattern))
+        var_new = get_variables(data_new, var_patterns)
+        var_old = get_variables(data_old, var_patterns)
         if len(var_new) != len(var_old):
             message = (
                 "The number of variables matching the glob pattern "
@@ -171,8 +196,8 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_pattern="
                 )
 
         # Get zone information
-        zone_new = list(data_new.zones(zone_pattern))
-        zone_old = list(data_old.zones(zone_pattern))
+        zone_new = get_zones(data_new, zone_patterns)
+        zone_old = get_zones(data_old, zone_patterns)
         if len(zone_new) != len(zone_old):
             message = (
                 "The number of zones matching the glob pattern "
@@ -235,6 +260,27 @@ def export_pages(output_dir, prefix='', width=600, supersample=2,
             outfile, width,
             region = tpc.ExportRegion.AllFrames,
             supersample = supersample
+        )
+
+def extract(datafile_in, datafile_out, zone_patterns=None, var_patterns=None):
+    ''' Copy specified zones/variables into a new file
+
+    Arguments:
+        datafile_in        [str] Path to input Tecplot datafile
+        datafile_out       [str] Path to Tecplot datafile to be written
+        variable_patterns  [list(str)] Names of variable to be analyzed.
+                           Wildcard patterns are allowed.
+        zone_patterns      [list(str)] Names of zones to be analyzed.
+                           Wildcard patterns are allowed.
+    '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+    with temp_frame() as frame:
+        LOG.info("Load input dataset from %s", datafile_in)
+        ds = tp.data.load_tecplot(datafile_in, frame=frame)
+        write_dataset(datafile_out, ds,
+            zones = get_zones(ds, zone_patterns),
+            variables = get_variables(ds, var_patterns),
         )
 
 def interpolate_dataset(datafile_src, datafile_tgt, datafile_out):

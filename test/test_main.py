@@ -10,6 +10,19 @@ def load_and_replace(dataset_name):
 class TestMain(unittest.TestCase):
     ''' Tests for the main program '''
 
+    def test_extract(self):
+        ''' Make sure extract command works '''
+        with test.temp_workspace():
+            main([
+                'extract',
+                '--variables=x,y',
+                '--zones="*:[1-4]"',
+                test.data_item_path('sphere.dat')
+            ])
+            ds = load_and_replace("extract.plt")
+            self.assertEqual(ds.num_variables,2)
+            self.assertEqual(ds.num_zones,4)
+
     def test_interp(self):
         ''' Make sure interp command works '''
         with test.temp_workspace():
@@ -19,7 +32,7 @@ class TestMain(unittest.TestCase):
                 test.data_item_path('interp_tgt.dat'),
             ])
             ds = load_and_replace("interp.plt")
-            vrange = ds.variable("r").values(0).minmax
+            vrange = ds.variable("r").values(0).minmax()
             self.assertAlmostEqual(max(vrange), 6.39408e-01, delta=1e-6)
             self.assertAlmostEqual(min(vrange), 5.10930e-01, delta=1e-6)
 

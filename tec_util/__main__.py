@@ -40,6 +40,13 @@ def vector_spec(arg):
                'a comma separated pair of strings'
         return { name_in : names_out }
 
+def glob_spec(arg):
+    ''' Parse list of glob patterns used to select variables and zones '''
+    if arg:
+        return list(map(dequote,dequote(arg).split(',')))
+    else:
+        return arg
+
 
 #-------------------------------------------------------------------------------
 # Subcommmands
@@ -50,8 +57,8 @@ def diff(args):
         args.datafile_new,
         args.datafile_old,
         args.datafile_out,
-        zone_pattern = args.zone_pattern,
-        var_pattern = args.var_pattern,
+        zone_patterns = args.zones,
+        var_patterns = args.variables,
         nskip = args.nskip,
     )
 
@@ -68,6 +75,15 @@ def export(args):
         args.cvar,
         args.rescale,
         args.num_contour,
+    )
+
+def extract(args):
+    ''' Copy specified zones/variables into a new datafile '''
+    tec_util.extract(
+        args.datafile_in,
+        args.datafile_out,
+        zone_patterns = args.zones,
+        var_patterns = args.variables,
     )
 
 def info(args):
@@ -139,7 +155,11 @@ def slice(args):
 
 def stats(args):
     ''' Extract zone max/min/averages for each variable. '''
-    stats = tec_util.compute_statistics(args.datafile_in, args.variables)
+    stats = tec_util.compute_statistics(
+        args.datafile_in,
+        zone_patterns = arg.zones,
+        var_patterns = args.variables,
+    )
 
     columns = ['Variable,', 'ZoneID', 'Zone,', 'Min', 'Max', 'Mean']
     var_width  = len(columns[0])
@@ -228,18 +248,19 @@ def configure_diff_parser(parser):
     parser.add_argument(
         '-o', '--datafile_out',
         help = "file where differences are saved (def: diff.plt)",
-        nargs = "?",
         default = "diff.plt",
     )
     parser.add_argument(
-        '-z', '--zone_pattern',
-        help = "Glob pattern for filtering zones (def: '*')",
-        default = "*",
+        '-z', '--zones',
+        help = "Comma-separated list of zones to diff (supports globs)",
+        type = glob_spec,
+        default = None, # all zones
     )
     parser.add_argument(
-        '-v', '--var_pattern',
-        help = "Glob pattern for filtering variables (def: '*')",
-        default = "*",
+        '-v', '--variables',
+        help = "Comma-separated list of variables to diff (supports globs)",
+        type = glob_spec,
+        default = None,  # all vars
     )
     parser.add_argument(
         '--nskip',
@@ -304,6 +325,29 @@ def configure_export_parser(parser):
         type = int,
     )
 
+def configure_extract_parser(parser):
+    parser.add_argument(
+        'datafile_in',
+        help = "input dataset to be processed",
+    )
+    parser.add_argument(
+        '-o', '--datafile_out',
+        help = "file where outputs are saved (def: extract.plt)",
+        default = "extract.plt",
+    )
+    parser.add_argument(
+        '-z', '--zones',
+        help = "Comma-separated list of zones to diff (supports globs)",
+        type = glob_spec,
+        default = None, # all zones
+    )
+    parser.add_argument(
+        '-v', '--variables',
+        help = "Comma-separated list of variables to diff (supports globs)",
+        type = glob_spec,
+        default = None,  # all vars
+    )
+
 def configure_info_parser(parser):
     parser.add_argument(
         "datafile_in",
@@ -321,8 +365,7 @@ def configure_interp_parser(parser):
     )
     parser.add_argument(
         '-o', '--datafile_out',
-        help = "file where differences are saved (def: interp.plt)",
-        nargs = "?",
+        help = "file where outputs are saved (def: interp.plt)",
         default = "interp.plt",
     )
 
@@ -417,10 +460,16 @@ def configure_stats_parser(parser):
         help = "file to be analyzed",
     )
     parser.add_argument(
-        "variables",
-        help = "variables to be analyzed (supports globbing).",
-        nargs = "*",
-        default = None,
+        "-v", "--variables",
+        help = "Comma-separated list of variables to analyze (supports globs).",
+        type = glob_spec,
+        default = None,  # all vars
+    )
+    parser.add_argument(
+        "-z", "--zones",
+        help = "Comma-separated list of zones to analyze (supports globs).",
+        type = glob_spec,
+        default = None,  # all zones
     )
 
 def configure_to_ascii_parser(parser):
@@ -482,6 +531,7 @@ def build_parser():
         # name            function       parser
         'diff':         ( diff,          configure_diff_parser         ),
         'export':       ( export,        configure_export_parser       ),
+        'extract':      ( extract,       configure_extract_parser      ),
         'info':         ( info,          configure_info_parser         ),
         'interp':       ( interp,        configure_interp_parser       ),
         'slice':        ( slice,         configure_slice_parser        ),

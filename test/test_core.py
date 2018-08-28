@@ -27,7 +27,7 @@ class TestDifferenceDatasets(unittest.TestCase):
                 [ "x", "y", "z" ],
             )
             for v in ds.variables():
-                zone_maxima = [ v.values(i).max for i in range(v.num_zones) ]
+                zone_maxima = [ v.values(i).max() for i in range(v.num_zones) ]
                 self.assertAlmostEqual(max(zone_maxima), 0.5, delta=1e-6)
 
         # nskip = 1: two variables should be diff'd
@@ -45,7 +45,7 @@ class TestDifferenceDatasets(unittest.TestCase):
                 "delta_z": 0.00,
             }
             for v in ds.variables():
-                zone_maxima = [ v.values(i).max for i in range(v.num_zones) ]
+                zone_maxima = [ v.values(i).max() for i in range(v.num_zones) ]
                 self.assertAlmostEqual(max(zone_maxima), max_vals[v.name], delta=1e-6)
 
     def test_variable_filter(self):
@@ -57,7 +57,7 @@ class TestDifferenceDatasets(unittest.TestCase):
                 test.data_item_path("cube.dat"),
                 "diff.dat",
                 nskip=1,
-                var_pattern="z",
+                var_patterns="z",
             )
             ds = load_and_replace("diff.dat")
             self.assertEqual(ds.num_variables, 2)
@@ -73,13 +73,31 @@ class TestDifferenceDatasets(unittest.TestCase):
                 test.data_item_path("cube.dat"),
                 "diff.dat",
                 nskip=1,
-                zone_pattern="*:[246]",
+                zone_patterns="*:[246]",
             )
             ds = load_and_replace("diff.dat")
             self.assertEqual(ds.num_zones, 3)
             self.assertTrue(ds.zone(0).name.endswith(":2"))
             self.assertTrue(ds.zone(1).name.endswith(":4"))
             self.assertTrue(ds.zone(2).name.endswith(":6"))
+
+class TestExtract(unittest.TestCase):
+    ''' Unit tests for extract function '''
+
+    def test_extract(self):
+        with test.temp_workspace():
+            ds = load_and_replace(test.data_item_path("sphere.dat"))
+            self.assertEqual(ds.num_variables,3)
+            self.assertEqual(ds.num_zones,6)
+            tec_util.extract(
+                test.data_item_path("sphere.dat"),
+                "extract.dat",
+                var_patterns=['x','y'],
+                zone_patterns=['*:[246]'],
+            )
+            ds = load_and_replace("extract.dat")
+            self.assertEqual(ds.num_variables,2)
+            self.assertEqual(ds.num_zones,3)
 
 class TestRenameVariables(unittest.TestCase):
     ''' Unit test for the rename_variables function '''
@@ -132,8 +150,8 @@ class TestRevolveDataset(unittest.TestCase):
             self.assertEqual(vars,['x','y','z','q1','q2','v1','v2'])
             self.assertEqual(ds.zone(0).dimensions,(11,9,13))
             self.assertEqual(
-                ds.zone(0).values('y').minmax,
-                ds.zone(0).values('z').minmax
+                ds.zone(0).values('y').minmax(),
+                ds.zone(0).values('z').minmax()
             )
 
     def test_radial_coord(self):
@@ -150,8 +168,8 @@ class TestRevolveDataset(unittest.TestCase):
             vars = [v.name for v in ds.variables()]
             self.assertEqual(vars,['x','y','q1','q2','v1','v2','z'])
             self.assertEqual(
-                ds.zone(0).values('v2').minmax,
-                ds.zone(0).values('z').minmax,
+                ds.zone(0).values('v2').minmax(),
+                ds.zone(0).values('z').minmax(),
             )
 
             tec_util.revolve_dataset(
@@ -165,12 +183,12 @@ class TestRevolveDataset(unittest.TestCase):
             vars = [v.name for v in ds.variables()]
             self.assertEqual(vars,['x','y','q1','q2','v1','v2','ry','rz'])
             self.assertEqual(
-                ds.zone(0).values('v2').minmax,
-                ds.zone(0).values('ry').minmax,
+                ds.zone(0).values('v2').minmax(),
+                ds.zone(0).values('ry').minmax(),
             )
             self.assertEqual(
-                ds.zone(0).values('v2').minmax,
-                ds.zone(0).values('rz').minmax,
+                ds.zone(0).values('v2').minmax(),
+                ds.zone(0).values('rz').minmax(),
             )
 
     def test_vector_vars(self):
@@ -187,8 +205,8 @@ class TestRevolveDataset(unittest.TestCase):
             vars = [v.name for v in ds.variables()]
             self.assertEqual(vars,['x','y','z','q1','q2','v1','v1_cos','v1_sin','v2','v2_cos','v2_sin'])
             z0 = ds.zone(0)
-            self.assertEqual(z0.values('v1').minmax, z0.values('v1_cos').minmax)
-            self.assertEqual(z0.values('v1').minmax, z0.values('v1_sin').minmax)
+            self.assertEqual(z0.values('v1').minmax(), z0.values('v1_cos').minmax())
+            self.assertEqual(z0.values('v1').minmax(), z0.values('v1_sin').minmax())
 
             tec_util.revolve_dataset(
                 test.data_item_path("axi_sphere.plt"),
@@ -204,8 +222,8 @@ class TestRevolveDataset(unittest.TestCase):
             vars = [v.name for v in ds.variables()]
             self.assertEqual(vars,['x','y','z','q1','q2','v1','v1y','v1z','v2','v2y','v2z'])
             z0 = ds.zone(0)
-            self.assertEqual(z0.values('v1').minmax, z0.values('v1y').minmax)
-            self.assertEqual(z0.values('v1').minmax, z0.values('v1z').minmax)
+            self.assertEqual(z0.values('v1').minmax(), z0.values('v1y').minmax())
+            self.assertEqual(z0.values('v1').minmax(), z0.values('v1z').minmax())
 
     def test_surface_grid(self):
         ''' Verify we can create a surface by revoling a 1D generatrix '''
@@ -221,8 +239,8 @@ class TestRevolveDataset(unittest.TestCase):
             self.assertEqual(vars,['x','y','z','q1','q2','v1','v2'])
             self.assertEqual(ds.zone(0).dimensions,(11,13,1))
             self.assertEqual(
-                ds.zone(0).values('y').minmax,
-                ds.zone(0).values('z').minmax
+                ds.zone(0).values('y').minmax(),
+                ds.zone(0).values('z').minmax()
             )
 
 class TestInterpolate(unittest.TestCase):
@@ -236,6 +254,6 @@ class TestInterpolate(unittest.TestCase):
                 "interp_out.plt",
             )
             ds = load_and_replace("interp_out.plt")
-            vrange = ds.variable("r").values(0).minmax
+            vrange = ds.variable("r").values(0).minmax()
             self.assertAlmostEqual(max(vrange), 6.39408e-01, delta=1e-6)
             self.assertAlmostEqual(min(vrange), 5.10930e-01, delta=1e-6)
