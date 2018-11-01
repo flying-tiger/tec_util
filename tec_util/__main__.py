@@ -124,8 +124,8 @@ def info(args):
     for var in dataset.variables():
         vmin,vmax = float('inf'), -float('inf')
         for i in range(var.num_zones):
-            vmin = min(vmin, var.values(i).min)
-            vmax = max(vmax, var.values(i).max)
+            vmin = min(vmin, var.values(i).min())
+            vmax = max(vmax, var.values(i).max())
         leader = "[{v.index:^3d}] {v.name}".format(v=var)
         print(" {1:{0}s} Min= {2:+12.5e}, Max= {3:+12.5e}".format(col_width, leader, vmin, vmax))
 

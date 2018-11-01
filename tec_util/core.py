@@ -147,7 +147,7 @@ def compute_statistics(datafile_in, variable_patterns=None, zone_patterns=None):
             zone_stats = []
             for zone in zones:
                 data = dataset.variable(var.index).values(zone.index)
-                zone_stats.append(stats_tuple(zone.name, data.max, data.min, mean(data[:])))
+                zone_stats.append(stats_tuple(zone.name, data.max(), data.min(), mean(data[:])))
             var_stats[var.name] = zone_stats
 
     return var_stats
