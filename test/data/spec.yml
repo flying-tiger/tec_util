@@ -1,0 +1,70 @@
+datasets:
+  - "spec_data/ds1.dat"
+  - "spec_data/ds2.dat"
+  - "spec_data/ds3.dat"
+
+equations:
+  - "{x (mm)} = {x}*1000"
+  - "{p (kPa)} = {p}/1000"
+  - "{T (1000K)} = {T}/1000"
+
+defaults:
+  - &frame
+    width: 6
+    height: 3
+    plot:
+      show_lines:   True
+      show_symbols: True
+      show_legend:  True
+  - &x_axis
+    title: "X Coordinate [mm]"
+    min: -40.0
+    max: 0.0
+  - &pmap
+    x_variable: "x (mm)"
+    y_variable: "p (kPa)"
+  - &tmap
+    x_variable: "x (mm)"
+    y_variable: "T (1000K)"
+  - &line1
+    color: DarkBlue
+    line_pattern: Solid
+  - &line2
+    color: DeepRed
+    line_pattern: DashDot
+    pattern_length: 1.5
+  - &line3
+    color: Forest
+    line_pattern: Dashed
+    pattern_length: 1.5
+
+pages:
+  - name: combo_plot
+    frames:
+      - <<: *frame
+        position: [0,0]
+        axes:
+          x_axis[0]: *x_axis
+          y_axis[0]:
+              title: "Pressure [kPa]"
+              min: 0.0
+              max: 35.0
+        linemaps:
+          - {name: "Data 1", zone: "stag[0]", line: *line1, <<: *pmap }
+          - {name: "Data 2", zone: "stag[1]", line: *line2, <<: *pmap }
+          - {name: "Data 3", zone: "stag[2]", line: *line3, <<: *pmap }
+      - <<: *frame
+        position: [0,3]
+        axes:
+          x_axis[0]: *x_axis
+          y_axis[0]:
+            title: "Temperature [1000K]"
+            min: 0.0
+            max: 25.0
+        linemaps:
+          - {name: "Data 1", zone: "stag[0]", line: *line1, <<: *tmap }
+          - {name: "Data 2", zone: "stag[1]", line: *line2, <<: *tmap }
+          - {name: "Data 3", zone: "stag[2]", line: *line3, <<: *tmap }
+
+
+

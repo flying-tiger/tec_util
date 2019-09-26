@@ -553,7 +553,9 @@ def build_parser():
 
     return parser
 
-def main(args):
+def main(args=None):
+    if not args:
+        args = sys.argv[1:]
     parser = build_parser()
     args = parser.parse_args(args)
     logging.getLogger('tec_util').setLevel(args.loglevel)
@@ -565,5 +567,5 @@ def main(args):
         os.remove("batch.log")
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main()
 
