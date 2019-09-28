@@ -94,12 +94,11 @@ class TestLayoutManipulation(unittest.TestCase):
             # Therefore, trying to establish a "reference output" is
             self.assertTrue(exists('test.lay'))
 
-
     def test_full_example(self):
         with test.temp_workspace():
             shutil.copytree(test.data_item_path('spec_data'),'spec_data')
             with open(test.data_item_path('spec.yml')) as sf:
                 spec = yaml.safe_load(sf)
-            gen.make_layout(spec)
+            gen.make_layout(spec['datasets'],spec['pages'],spec['equations'])
             tp.export.save_png('test.png')
             self.assertTrue(exists('test.png'))

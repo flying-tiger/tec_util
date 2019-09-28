@@ -1,7 +1,9 @@
+import shutil
 import tecplot as tp
 import tecplot.constant as tpc
 import test
 import unittest
+from os.path import exists
 from tec_util.__main__ import main
 
 def load_and_replace(dataset_name):
@@ -22,6 +24,17 @@ class TestMain(unittest.TestCase):
             ds = load_and_replace("extract.plt")
             self.assertEqual(ds.num_variables,2)
             self.assertEqual(ds.num_zones,4)
+
+    def test_generate(self):
+        ''' Make sure generate command works '''
+        with test.temp_workspace():
+            shutil.copytree(test.data_item_path('spec_data'), 'spec_data')
+            main([
+                'generate',
+                '--layout_file=layout.lay',
+                test.data_item_path('spec.yml')
+            ])
+            self.assertTrue(exists('layout.lay'))
 
     def test_interp(self):
         ''' Make sure interp command works '''

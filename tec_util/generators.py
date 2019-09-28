@@ -200,35 +200,30 @@ def configure_xylineaxis(axis, **args):
     set_attributes(axis, args, arg_types)
 
 
-
 #-----------------------------------------------------------------------
 # Main Entry Point
 #-----------------------------------------------------------------------
-def make_layout(layout_spec):
+def make_layout(datafiles, page_specs, equations=None):
     ''' Clear and configure a layout from a dict-like data structure
 
-        This function enables construction of a Tecplot layout from a
-        dict-like datastructure, e.g. a YAML document. This function
+        This function enables construction of a Tecplot layout from
+        dict-like datastructures, e.g. a YAML document. This function
         manipulates the state of the Tecplot runtime, and will clear
         any existing plots that have been defined.
 
         Arguments:
-            layout_spec  Hierarchy of dict-like objects that specify
-                         the layout. Generally follows the conventions
-                         of the pyTecplot package. See examples.
+            datafiles    List(str) of datafile names to be loaded
+            page_spec    List(dict) of properties defining each page
+            equations    List(str) of equations applied to the dataset
 
         Returns:
             None
 
     '''
 
-    datasets   = layout_spec['datasets']
-    page_specs = layout_spec['pages']
-    equations  = layout_spec.get('equations',[])
-
     # Load and pre-process data
     tp.new_layout()
-    tp.data.load_tecplot(datasets)
+    tp.data.load_tecplot(datafiles)
     if equations:
         tp.data.operate.execute_equation('\n'.join(equations))
     default_page = tp.active_page()

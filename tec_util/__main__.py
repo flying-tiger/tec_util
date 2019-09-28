@@ -86,6 +86,12 @@ def extract(args):
         var_patterns = args.variables,
     )
 
+def generate(args):
+    ''' Generate a layout file from a YAML specification file '''
+    import tecplot as tp
+    tec_util.configure_layout(args.spec_file)
+    tp.save_layout(args.layout_file, use_relative_paths=True)
+
 def info(args):
     ''' Print summary information about a dataset '''
     import tecplot as tp
@@ -348,6 +354,17 @@ def configure_extract_parser(parser):
         default = None,  # all vars
     )
 
+def configure_generate_parser(parser):
+    parser.add_argument(
+        'spec_file',
+        help = 'layout specification file',
+    )
+    parser.add_argument(
+        '-o', '--layout_file',
+        help = 'where tecplot *.lay file is saved [tec.lay]',
+        default = 'tec.lay',
+    )
+
 def configure_info_parser(parser):
     parser.add_argument(
         "datafile_in",
@@ -532,6 +549,7 @@ def build_parser():
         'diff':         ( diff,          configure_diff_parser         ),
         'export':       ( export,        configure_export_parser       ),
         'extract':      ( extract,       configure_extract_parser      ),
+        'generate':     ( generate,      configure_generate_parser     ),
         'info':         ( info,          configure_info_parser         ),
         'interp':       ( interp,        configure_interp_parser       ),
         'slice':        ( slice,         configure_slice_parser        ),

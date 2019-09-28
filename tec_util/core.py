@@ -6,6 +6,8 @@ import numpy as np
 import os
 import sys
 import tempfile
+import yaml
+from . import generators
 from contextlib import contextmanager
 from importlib.machinery import SourceFileLoader
 from statistics import mean
@@ -282,6 +284,20 @@ def extract(datafile_in, datafile_out, zone_patterns=None, var_patterns=None):
             zones = get_zones(ds, zone_patterns),
             variables = get_variables(ds, var_patterns),
         )
+
+def configure_layout(spec_file, layout_file='tec.lay'):
+    ''' Clear and configure the layout based on a YAML spec file
+
+        INPUTS:
+            spec_file       Path to YAML specification file
+            layout_file     Path to generated layout file
+
+        OUTPUTS:
+            none
+    '''
+    with open(spec_file) as sf:
+        spec = yaml.safe_load(sf)
+    generators.make_layout(spec['datasets'],spec['pages'],spec['equations'])
 
 def interpolate_dataset(datafile_src, datafile_tgt, datafile_out):
     ''' Interpolate variables from one dataset onto another (3D only)
