@@ -65,7 +65,10 @@ def diff(args):
 def export(args):
     ''' Export all pages in a layout to [prefix]<page.name>.png '''
     import tecplot as tp
-    tp.layout.load_layout(args.layout_file)
+    if args.layout_file.endswith('.yml'):
+        tec_util.configure_layout(args.layout_file)
+    else:
+        tp.layout.load_layout(args.layout_file)
     tec_util.export_pages(
         args.output_dir,
         args.prefix,
@@ -281,7 +284,7 @@ def configure_diff_parser(parser):
 def configure_export_parser(parser):
     parser.add_argument(
         "layout_file",
-        help = "path to layout file to be processed"
+        help = "path to layout file (or YAML spec file) to be processed"
     )
     parser.add_argument(
         "--output_dir", "-o",

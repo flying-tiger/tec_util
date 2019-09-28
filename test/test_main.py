@@ -12,6 +12,16 @@ def load_and_replace(dataset_name):
 class TestMain(unittest.TestCase):
     ''' Tests for the main program '''
 
+    def test_export_yaml(self):
+        ''' Test export command with YAML input file '''
+        with test.temp_workspace():
+            shutil.copytree(test.data_item_path('spec_data'), 'spec_data')
+            main([
+                'export',
+                test.data_item_path('spec.yml')
+            ])
+            self.assertTrue(exists('combo_plot.png'))
+
     def test_extract(self):
         ''' Make sure extract command works '''
         with test.temp_workspace():
