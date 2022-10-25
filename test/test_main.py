@@ -59,6 +59,18 @@ class TestMain(unittest.TestCase):
             self.assertAlmostEqual(max(vrange), 6.39408e-01, delta=1e-6)
             self.assertAlmostEqual(min(vrange), 5.10930e-01, delta=1e-6)
 
+    def test_merge(self):
+        ''' Make sure merge command works '''
+        with test.temp_workspace():
+            main([
+                'merge',
+                test.data_item_path('merge1.dat'),
+                test.data_item_path('merge2.dat'),
+            ])
+            ds = load_and_replace('merge.plt')
+            self.assertEqual(2, ds.num_zones)
+            self.assertEqual(5, ds.num_variables)
+
     def test_revolve(self):
         ''' Make sure revolve command works '''
         with test.temp_workspace():

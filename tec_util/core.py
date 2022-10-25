@@ -19,6 +19,14 @@ LOG = logging.getLogger(__name__)
 #-----------------------------------------------------------------------
 # Helper Functions
 #-----------------------------------------------------------------------
+def copy_variable_values(src, dst):
+    ''' Copy variable values from src to dst. '''
+    assert src.num_zones == dst.num_zones
+    for n in range(src.num_zones):
+        sval = src.values(n)
+        dval = dst.values(n)
+        dval[:] = sval[:]
+
 def get_variables(ds, patterns=None):
     ''' Return list of variable objects matching specified patterns '''
     if not patterns or isinstance(patterns,str):
@@ -339,6 +347,62 @@ def interpolate_dataset(datafile_src, datafile_tgt, datafile_out):
 
         # Save results
         write_dataset(datafile_out, data, zones=tgt_zones)
+
+def merge_datasets(datafile1, datafile2, datafile_out):
+    ''' Merge variables from point-matched datasets into one dataset
+
+        INPUTS:
+            datafile1     Path to 1st dataset to merge
+            datafile2     Path to 2nd dataset to merge
+            datafile_out  Path where merged dataset is saved
+
+        OUTPUTS:
+            none
+
+        NOTES:
+          -  If a variable is present in both datasets, the values from
+             dataset2 are used in the final dataset.
+             TODO: Make this configurable (prefer1, pefer2, rename, etc.)
+
+    '''
+    import tecplot as tp
+    import tecplot.constant as tpc
+    with temp_frame() as frame1, temp_frame() as frame2:
+
+        # Load datafiles into separate frames. This allows us to treat the
+        # two data files as completely separate objects
+        LOG.debug("Load dataset1 from %s", datafile1)
+        plot1  = frame1.plot(tpc.PlotType.Cartesian3D)
+        data1  = tp.data.load_tecplot(datafile1, frame=frame1)
+        LOG.debug("Load dataset2 from %s", datafile2)
+        plot2  = frame2.plot(tpc.PlotType.Cartesian3D)
+        data2  = tp.data.load_tecplot(datafile2, frame=frame2)
+
+        # Error checking
+        assert data1.num_zones == data2.num_zones, \
+               "Cannot merge datasets; number of zones differ"
+        for z1,z2 in zip(data1.zones(), data2.zones()):
+            assert z1.zone_type  == z2.zone_type, \
+                   f"Cannot merge {z1.name}, {z2.name}: zone type mismatch"
+            assert z1.rank == z2.rank, \
+                   f"Cannot merge {z1.name}, {z2.name}: zone rank mismatch"
+            assert z1.num_points == z2.num_points, \
+                   f"Cannot merge {z1.name}, {z2.name}: zone size mismatch"
+
+        # Copy data2 variables into data1
+        # This will overwrite data in data1 if the variable already exists.
+        for var2 in data2.variables():
+            if var2.name in data1.variable_names:
+                LOG.info("%s exists in dataset1. Overwriting.", var2.name)
+                var1 = data1.variable(var2.name)
+            else:
+                LOG.info(f"Adding %s to dataset1.", var2.name)
+                var1 = data1.add_variable(var2.name)
+            copy_variable_values(var2, var1)
+
+        # Write data out
+        LOG.info("Write combined dataset to %s", datafile_out)
+        write_dataset(datafile_out, data1)
 
 def rename_variables(datafile_in, datafile_out, name_map):
     ''' Rename variables in a dataset '''

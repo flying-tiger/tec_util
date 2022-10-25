@@ -154,43 +154,13 @@ def interp(args):
         args.datafile_out,
     )
 
-def slice(args):
-    ''' Extract slices from dataset of surfaces zones. '''
-    tec_util.slice_surfaces(
-        args.slice_file,
-        args.datafile_in,
-        args.datafile_out
+def merge(args):
+    ''' Combine variables from two point-matched datasets. '''
+    tec_util.merge_datasets(
+        args.datafile1,
+        args.datafile2,
+        args.datafile_out,
     )
-
-def stats(args):
-    ''' Extract zone max/min/averages for each variable. '''
-    stats = tec_util.compute_statistics(
-        args.datafile_in,
-        zone_patterns = arg.zones,
-        var_patterns = args.variables,
-    )
-
-    columns = ['Variable,', 'ZoneID', 'Zone,', 'Min', 'Max', 'Mean']
-    var_width  = len(columns[0])
-    zone_width = len(columns[2])
-    for var_name, var_stats in stats.items():
-        var_width = max(var_width, len(var_name)+1)
-        for zone in var_stats:
-            zone_width = max(zone_width, len(zone.name)+1)
-    print(
-        '{:{var_width}s} {:4s}, {:{zone_width}s} {:>15s}, {:>15s}, {:>15s}'
-        .format(*columns, var_width=var_width, zone_width=zone_width),
-    )
-    for var_name, var_stats in stats.items():
-        for i, zone in enumerate(var_stats):
-            print(
-                '{:{var_width}s} {:7s} {:{zone_width}s} {:15.6e}, {:15.6e}, {:15.6e}'
-                .format(
-                    var_name+',', str(i)+',', zone.name+',', zone.min, zone.max, zone.mean,
-                    var_width=var_width, zone_width=zone_width,
-                )
-            )
-    print()
 
 def rename_vars(args):
     ''' Rename variables within the dataset. '''
@@ -228,6 +198,44 @@ def revolve(args):
         angle        = args.angle,
         vector_vars  = vectors,
     )
+
+def slice(args):
+    ''' Extract slices from dataset of surfaces zones. '''
+    tec_util.slice_surfaces(
+        args.slice_file,
+        args.datafile_in,
+        args.datafile_out
+    )
+
+def stats(args):
+    ''' Extract zone max/min/averages for each variable. '''
+    stats = tec_util.compute_statistics(
+        args.datafile_in,
+        zone_patterns = arg.zones,
+        var_patterns = args.variables,
+    )
+
+    columns = ['Variable,', 'ZoneID', 'Zone,', 'Min', 'Max', 'Mean']
+    var_width  = len(columns[0])
+    zone_width = len(columns[2])
+    for var_name, var_stats in stats.items():
+        var_width = max(var_width, len(var_name)+1)
+        for zone in var_stats:
+            zone_width = max(zone_width, len(zone.name)+1)
+    print(
+        '{:{var_width}s} {:4s}, {:{zone_width}s} {:>15s}, {:>15s}, {:>15s}'
+        .format(*columns, var_width=var_width, zone_width=zone_width),
+    )
+    for var_name, var_stats in stats.items():
+        for i, zone in enumerate(var_stats):
+            print(
+                '{:{var_width}s} {:7s} {:{zone_width}s} {:15.6e}, {:15.6e}, {:15.6e}'
+                .format(
+                    var_name+',', str(i)+',', zone.name+',', zone.min, zone.max, zone.mean,
+                    var_width=var_width, zone_width=zone_width,
+                )
+            )
+    print()
 
 def to_ascii(args):
     ''' Convert a Tecplot datafile to ascii format '''
@@ -387,6 +395,21 @@ def configure_interp_parser(parser):
         '-o', '--datafile_out',
         help = "file where outputs are saved (def: interp.plt)",
         default = "interp.plt",
+    )
+
+def configure_merge_parser(parser):
+    parser.add_argument(
+        'datafile1',
+        help = 'base dataset for merge',
+    )
+    parser.add_argument(
+        'datafile2',
+        help = 'dataset merged into dataset1',
+    )
+    parser.add_argument(
+        '-o', '--datafile_out',
+        help = 'file where merged dataset is saved (def: merge.plt)',
+        default = 'merge.plt',
     )
 
 def configure_rename_vars_parser(parser):
@@ -555,11 +578,12 @@ def build_parser():
         'generate':     ( generate,      configure_generate_parser     ),
         'info':         ( info,          configure_info_parser         ),
         'interp':       ( interp,        configure_interp_parser       ),
-        'slice':        ( slice,         configure_slice_parser        ),
-        'stats':        ( stats,         configure_stats_parser        ),
+        'merge':        ( merge,         configure_merge_parser        ),
         'rename_vars':  ( rename_vars,   configure_rename_vars_parser  ),
         'rename_zones': ( rename_zones,  configure_rename_zones_parser ),
         'revolve':      ( revolve,       configure_revolve_parser      ),
+        'slice':        ( slice,         configure_slice_parser        ),
+        'stats':        ( stats,         configure_stats_parser        ),
         'to_ascii':     ( to_ascii,      configure_to_ascii_parser     ),
         'to_plt':       ( to_plt,        configure_to_plt_parser       ),
     }

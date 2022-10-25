@@ -99,6 +99,24 @@ class TestExtract(unittest.TestCase):
             self.assertEqual(ds.num_variables,2)
             self.assertEqual(ds.num_zones,3)
 
+class TestMergeDatasets(unittest.TestCase):
+    ''' Unit tests for merge_datasets fucntion '''
+
+    def test_merge(self):
+        with test.temp_workspace():
+            tec_util.merge_datasets(
+                test.data_item_path("merge1.dat"),
+                test.data_item_path("merge2.dat"),
+                "merge.dat",
+            )
+            ds = load_and_replace("merge.dat")
+            self.assertEqual(ds.num_variables,5)
+            self.assertEqual(ds.num_zones,2)
+
+            # When variable in both dataset, values from dataset2 is used.
+            self.assertAlmostEqual(-6.4280895E-05, ds.zone('ZoneA').values('x')[15])
+
+
 class TestRenameVariables(unittest.TestCase):
     ''' Unit test for the rename_variables function '''
 
