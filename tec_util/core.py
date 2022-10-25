@@ -27,33 +27,58 @@ def copy_variable_values(src, dst):
         dval = dst.values(n)
         dval[:] = sval[:]
 
-def get_variables(ds, patterns=None):
-    ''' Return list of variable objects matching specified patterns '''
-    if not patterns or isinstance(patterns,str):
-        # Allows bare string input when only one pattern needed
-        result = list(ds.variables(patterns))
-    else:
-        matches = {}
-        for p in patterns:
-            for v in ds.variables(p):
-                matches[v.name] = v
-        result = list(matches.values())
-    assert result, f"No variables in dataset matching {' '.join(patterns)}"
-    return result
+def get_variables(ds, select=None, ignore=None, num_ignore=0):
+    ''' Return list of variable objects matching specified patterns
 
-def get_zones(ds, patterns=None):
-    ''' Return list of zone objects matching specified patterns '''
-    if not patterns or isinstance(patterns,str):
-        # Allows bare string input when only one pattern needed
-        result = list(ds.zones(patterns))
-    else:
-        matches = {}
-        for p in patterns:
-            for z in ds.zones(p):
-                matches[z.name] = z
-        result = list(matches.values())
-    assert result, f"No zones in dataset matching {' '.join(patterns)}"
-    return result
+        Arguments:
+            ds          The Dataset to be examined
+            select      str|list(str) of glob patterns for vars selected (def: all)
+            ignore      str|list(str) of glob patterns for vars ignored (def: none)
+            num_ignore  Ignores first N variables from the dataset (def: 0)
+                        (Useful for excluding coordinate variables)
+
+        Returns:
+            List of Variables that match patterns
+    '''
+    if not select or isinstance(select,str):
+        select = [select]
+
+    selected = set()
+    for s in select:
+        selected |= set(v.index for v in ds.variables(s))
+
+    if ignore:
+        selected -= set(v.index for v in get_variables(ds, select=ignore))
+
+    # Return *ordered* output list
+    assert selected, f"get_variables: No matching variables in dataset"
+    return [v for v in list(ds.variables())[num_ignore:] if v.index in selected]
+
+def get_zones(ds, select=None, ignore=None, num_ignore=0):
+    ''' Return list of zone objects matching specified patterns
+
+        Arguments:
+            ds          The Dataset to be examined
+            select      str|list(str) of glob patterns for zones selected
+            ignore      str|list(str) of glob patterns for zones ignored
+            num_ignore  Ignores first N zones from the dataset (def: 0)
+
+        Returns:
+            List of Zones that match patterns
+    '''
+    if not select or isinstance(select,str):
+        select = [select]
+
+    selected = set()
+    for s in select:
+        selected |= set(z.index for z in ds.zones(s))
+
+    if ignore:
+        selected -= set(z.index for z in get_zones(ds, select=ignore))
+
+    # Return *ordered* output list
+    assert selected, f"get_zones: No matching zones in dataset"
+    return [z for z in list(ds.zones())[num_ignore:] if z.index in selected]
 
 def rescale_frame(frame, num_contour):
     ''' Rescale 1st colormap for 2D and 3D plots, 1st xy-axes for XY plots '''
@@ -117,15 +142,15 @@ def write_dataset(filename, dataset, **kwargs):
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
-def compute_statistics(datafile_in, variable_patterns=None, zone_patterns=None):
+def compute_statistics(datafile_in, select_vars=None, ignore_vars=None, select_zones=None, ignore_zones=None):
     ''' Compute min/max/mean for each variable/zone combination
 
     Arguments:
-        datafile_in        [str]  Path of Tecplot datafile
-        variable_patterns  [list(str)] Names of variable to be analyzed.
-                           Wildcard patterns are allowed.
-        zone_patterns      [list(str)] Names of zones to be analyzed.
-                           Wildcard patterns are allowed.
+        datafile_in    [str]  Path of Tecplot datafile
+        select_vars    [list(str)] Name patterns of variables to analyze (def: all)
+        ignore_vars    [list(str)] Name patterns of variables to ignore (def: none)
+        select_zones   [list(str)] Name patterns of zones to analyze (def: all)
+        ignore_zones   [list(str)] Name patterns of zones to ignore (def: none)
 
     Returns:
         stats_info         [dict(list(stats_tuple))] Data structure with
@@ -145,9 +170,9 @@ def compute_statistics(datafile_in, variable_patterns=None, zone_patterns=None):
         )
 
         # Get all variables/zones matching requested patterns
-        variables = get_variables(ds, variable_patterns)
+        variables = get_variables(ds, select_vars, ignore_vars)
         LOG.info("Generating statisitics for: %s", ' '.join([v.name for v in variables]))
-        zones = get_zones(ds, zone_patterns)
+        zones = get_zones(ds, select_zones, ignore_zones)
         LOG.info("Gathering statisitics from: %s", ' '.join([z.name for z in zones]))
 
         # Compute per-zone statistics
@@ -162,16 +187,19 @@ def compute_statistics(datafile_in, variable_patterns=None, zone_patterns=None):
 
     return var_stats
 
-def difference_datasets(datafile_new, datafile_old, datafile_out, zone_patterns=None, var_patterns=None, nskip=3):
+def difference_datasets(datafile_new, datafile_old, datafile_out, nskip=3,
+                        select_vars=None, ignore_vars=None, select_zones=None, ignore_zones=None):
     ''' Compute variable-by-variable difference between datasets.
 
         INPUTS:
             datafile_new    Path to datafile to be differenced
             datafile_old    Path to datafile to use a baseline
             datafile_out    Path where datafile of differences is saved
-            zone_patterns   List of glob pattern specifying zones to difference (def: all)
-            var_patterns    List of glob pattern specifying variables to difference (def: all)
-            nskip           Number of variables at start of file to skip (def:3)
+            nskip           Number of variables at start of datasets to skip (def:3)
+            select_vars     [list(str)] Name patterns of variables to analyze (def: all)
+            ignore_vars     [list(str)] Name patterns of variables to ignore (def: none)
+            select_zones    [list(str)] Name patterns of zones to analyze (def: all)
+            ignore_zones    [list(str)] Name patterns of zones to ignore (def: none)
 
         OUTPUTS:
             none
@@ -188,8 +216,8 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_patterns=
         data_old = tp.data.load_tecplot(datafile_old, frame = frame_old)
 
         # Get variable information
-        var_new = get_variables(data_new, var_patterns)
-        var_old = get_variables(data_old, var_patterns)
+        var_new = get_variables(data_new, select_vars, ignore_vars, nskip)
+        var_old = get_variables(data_old, select_vars, ignore_vars, nskip)
         if len(var_new) != len(var_old):
             message = (
                 "The number of variables matching the glob pattern "
@@ -206,8 +234,8 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_patterns=
                 )
 
         # Get zone information
-        zone_new = get_zones(data_new, zone_patterns)
-        zone_old = get_zones(data_old, zone_patterns)
+        zone_new = get_zones(data_new, select_zones, ignore_zones)
+        zone_old = get_zones(data_old, select_zones, ignore_zones)
         if len(zone_new) != len(zone_old):
             message = (
                 "The number of zones matching the glob pattern "
@@ -226,10 +254,7 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, zone_patterns=
         # Compute delta new - old. Deltas get appended to data_new.
         LOG.info("Compute dataset differences (new - old).")
         initial_num_vars = data_new.num_variables
-        for i, (vnew, vold) in enumerate(zip(var_new, var_old)):
-            if vnew.index < nskip or vold.index < nskip:
-                LOG.debug("Skipping variable pair %d; index less than nskip", i)
-                continue
+        for vnew, vold in zip(var_new, var_old):
             delta = data_new.add_variable("delta_" + vnew.name)
             for znew, zold in zip(zone_new, zone_old):
                 try:
@@ -272,16 +297,16 @@ def export_pages(output_dir, prefix='', width=600, supersample=2,
             supersample = supersample
         )
 
-def extract(datafile_in, datafile_out, zone_patterns=None, var_patterns=None):
+def extract(datafile_in, datafile_out, select_vars=None, ignore_vars=None, select_zones=None, ignore_zones=None):
     ''' Copy specified zones/variables into a new file
 
     Arguments:
-        datafile_in        [str] Path to input Tecplot datafile
-        datafile_out       [str] Path to Tecplot datafile to be written
-        variable_patterns  [list(str)] Names of variable to be analyzed.
-                           Wildcard patterns are allowed.
-        zone_patterns      [list(str)] Names of zones to be analyzed.
-                           Wildcard patterns are allowed.
+        datafile_in     [str] Path to input Tecplot datafile
+        datafile_out    [str] Path to Tecplot datafile to be written
+        select_vars     [list(str)] Name patterns of variables to analyze (def: all)
+        ignore_vars     [list(str)] Name patterns of variables to ignore (def: none)
+        select_zones    [list(str)] Name patterns of zones to analyze (def: all)
+        ignore_zones    [list(str)] Name patterns of zones to ignore (def: none)
     '''
     import tecplot as tp
     import tecplot.constant as tpc
@@ -289,8 +314,8 @@ def extract(datafile_in, datafile_out, zone_patterns=None, var_patterns=None):
         LOG.info("Load input dataset from %s", datafile_in)
         ds = tp.data.load_tecplot(datafile_in, frame=frame)
         write_dataset(datafile_out, ds,
-            zones = get_zones(ds, zone_patterns),
-            variables = get_variables(ds, var_patterns),
+            zones = get_zones(ds, select_zones, ignore_zones),
+            variables = get_variables(ds, select_vars, ignore_vars),
         )
 
 def configure_layout(spec_file):
@@ -348,20 +373,23 @@ def interpolate_dataset(datafile_src, datafile_tgt, datafile_out):
         # Save results
         write_dataset(datafile_out, data, zones=tgt_zones)
 
-def merge_datasets(datafile1, datafile2, datafile_out):
+def merge_datasets(datafile1, datafile2, datafile_out,
+                   select_vars1=None, ignore_vars1=None, select_vars2=None, ignore_vars2=None):
     ''' Merge variables from point-matched datasets into one dataset
 
         INPUTS:
             datafile1     Path to 1st dataset to merge
             datafile2     Path to 2nd dataset to merge
             datafile_out  Path where merged dataset is saved
+            select_vars?  [list(str)] Name patterns of variables to retain (def: all)
+            ignore_vars?  [list(str)] Name patterns of variables to ignore (def: none)
 
         OUTPUTS:
             none
 
         NOTES:
           -  If a variable is present in both datasets, the values from
-             dataset2 are used in the final dataset.
+             dataset2 are used in the final output.
              TODO: Make this configurable (prefer1, pefer2, rename, etc.)
 
     '''
@@ -371,38 +399,44 @@ def merge_datasets(datafile1, datafile2, datafile_out):
 
         # Load datafiles into separate frames. This allows us to treat the
         # two data files as completely separate objects
-        LOG.debug("Load dataset1 from %s", datafile1)
+        LOG.debug('Load dataset1 from %s', datafile1)
         plot1  = frame1.plot(tpc.PlotType.Cartesian3D)
         data1  = tp.data.load_tecplot(datafile1, frame=frame1)
-        LOG.debug("Load dataset2 from %s", datafile2)
+        LOG.debug('Load dataset2 from %s', datafile2)
         plot2  = frame2.plot(tpc.PlotType.Cartesian3D)
         data2  = tp.data.load_tecplot(datafile2, frame=frame2)
 
-        # Error checking
+        # Zone type/size checking (do explicitly to try to give helpful messages)
         assert data1.num_zones == data2.num_zones, \
-               "Cannot merge datasets; number of zones differ"
+               'Cannot merge datasets; number of zones differ'
         for z1,z2 in zip(data1.zones(), data2.zones()):
             assert z1.zone_type  == z2.zone_type, \
-                   f"Cannot merge {z1.name}, {z2.name}: zone type mismatch"
+                   f'Cannot merge {z1.name}, {z2.name}: zone type mismatch'
             assert z1.rank == z2.rank, \
-                   f"Cannot merge {z1.name}, {z2.name}: zone rank mismatch"
+                   f'Cannot merge {z1.name}, {z2.name}: zone rank mismatch'
             assert z1.num_points == z2.num_points, \
-                   f"Cannot merge {z1.name}, {z2.name}: zone size mismatch"
+                   f'Cannot merge {z1.name}, {z2.name}: zone size mismatch'
+
+        # Select variables for final dataset
+        vars1 = get_variables(data1, select_vars1, ignore_vars1)
+        vars2 = get_variables(data2, select_vars2, ignore_vars2)
 
         # Copy data2 variables into data1
-        # This will overwrite data in data1 if the variable already exists.
-        for var2 in data2.variables():
-            if var2.name in data1.variable_names:
-                LOG.info("%s exists in dataset1. Overwriting.", var2.name)
-                var1 = data1.variable(var2.name)
+        # Overwrites data in data1 if the variable already exists.
+        new_vars = []
+        vars1_names = set(v1.name for v1 in vars1)
+        for v2 in vars2:
+            if v2.name in vars1_names:
+                LOG.info('"%s" exists in both datasets. Using dataset2.', v2.name)
+                v1 = data1.variable(v2.name)
             else:
-                LOG.info(f"Adding %s to dataset1.", var2.name)
-                var1 = data1.add_variable(var2.name)
-            copy_variable_values(var2, var1)
+                v1 = data1.add_variable(v2.name)
+                new_vars.append(v1)
+            copy_variable_values(v2, v1)
 
         # Write data out
         LOG.info("Write combined dataset to %s", datafile_out)
-        write_dataset(datafile_out, data1)
+        write_dataset(datafile_out, data1, variables=[*vars1, *new_vars])
 
 def rename_variables(datafile_in, datafile_out, name_map):
     ''' Rename variables in a dataset '''

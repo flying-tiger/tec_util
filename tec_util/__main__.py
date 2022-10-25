@@ -57,8 +57,8 @@ def diff(args):
         args.datafile_new,
         args.datafile_old,
         args.datafile_out,
-        zone_patterns = args.zones,
-        var_patterns = args.variables,
+        select_zones = args.zones,
+        select_vars = args.variables,
         nskip = args.nskip,
     )
 
@@ -85,8 +85,8 @@ def extract(args):
     tec_util.extract(
         args.datafile_in,
         args.datafile_out,
-        zone_patterns = args.zones,
-        var_patterns = args.variables,
+        select_zones = args.zones,
+        select_vars = args.variables,
     )
 
 def generate(args):
@@ -211,8 +211,8 @@ def stats(args):
     ''' Extract zone max/min/averages for each variable. '''
     stats = tec_util.compute_statistics(
         args.datafile_in,
-        zone_patterns = arg.zones,
-        var_patterns = args.variables,
+        select_zones = arg.zones,
+        select_vars = args.variables,
     )
 
     columns = ['Variable,', 'ZoneID', 'Zone,', 'Min', 'Max', 'Mean']

@@ -57,7 +57,7 @@ class TestDifferenceDatasets(unittest.TestCase):
                 test.data_item_path("cube.dat"),
                 "diff.dat",
                 nskip=1,
-                var_patterns="z",
+                select_vars="z",
             )
             ds = load_and_replace("diff.dat")
             self.assertEqual(ds.num_variables, 2)
@@ -73,7 +73,7 @@ class TestDifferenceDatasets(unittest.TestCase):
                 test.data_item_path("cube.dat"),
                 "diff.dat",
                 nskip=1,
-                zone_patterns="*:[246]",
+                select_zones="*:[246]",
             )
             ds = load_and_replace("diff.dat")
             self.assertEqual(ds.num_zones, 3)
@@ -92,8 +92,8 @@ class TestExtract(unittest.TestCase):
             tec_util.extract(
                 test.data_item_path("sphere.dat"),
                 "extract.dat",
-                var_patterns=['x','y'],
-                zone_patterns=['*:[246]'],
+                select_vars=['x','y'],
+                select_zones=['*:[246]'],
             )
             ds = load_and_replace("extract.dat")
             self.assertEqual(ds.num_variables,2)
