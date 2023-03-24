@@ -63,7 +63,7 @@ class TestMain(unittest.TestCase):
         ''' Make sure merge command works '''
         with test.temp_workspace():
             main([
-                'merge',
+                'merge', '--no_warn',
                 test.data_item_path('merge1.dat'),
                 test.data_item_path('merge2.dat'),
             ])

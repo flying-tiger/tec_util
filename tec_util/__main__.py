@@ -160,6 +160,7 @@ def merge(args):
         args.datafile1,
         args.datafile2,
         args.datafile_out,
+        warn_duplicates = args.warn_duplicates,
     )
 
 def rename_vars(args):
@@ -410,6 +411,13 @@ def configure_merge_parser(parser):
         '-o', '--datafile_out',
         help = 'file where merged dataset is saved (def: merge.plt)',
         default = 'merge.plt',
+    )
+    parser.add_argument(
+        '--no_warn',
+        action = 'store_const',
+        dest = 'warn_duplicates',
+        const = False,
+        default = True
     )
 
 def configure_rename_vars_parser(parser):
