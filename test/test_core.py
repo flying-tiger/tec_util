@@ -108,6 +108,7 @@ class TestMergeDatasets(unittest.TestCase):
                 test.data_item_path("merge1.dat"),
                 test.data_item_path("merge2.dat"),
                 "merge.dat",
+                warn_duplicates=False
             )
             ds = load_and_replace("merge.dat")
             self.assertEqual(ds.num_variables,5)
@@ -115,7 +116,6 @@ class TestMergeDatasets(unittest.TestCase):
 
             # When variable in both dataset, values from dataset2 is used.
             self.assertAlmostEqual(-6.4280895E-05, ds.zone('ZoneA').values('x')[15])
-
 
 class TestRenameVariables(unittest.TestCase):
     ''' Unit test for the rename_variables function '''

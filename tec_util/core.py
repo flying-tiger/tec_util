@@ -40,19 +40,21 @@ def get_variables(ds, select=None, ignore=None, num_ignore=0):
         Returns:
             List of Variables that match patterns
     '''
-    if not select or isinstance(select,str):
+    if not isinstance(select,list):
         select = [select]
 
-    selected = set()
+    select_index = set()
+
     for s in select:
-        selected |= set(v.index for v in ds.variables(s))
+        select_index |= set(v.index for v in ds.variables(s))
 
     if ignore:
-        selected -= set(v.index for v in get_variables(ds, select=ignore))
+        select_index -= set(v.index for v in get_variables(ds, select=ignore))
 
-    # Return *ordered* output list
-    assert selected, f"get_variables: No matching variables in dataset"
-    return [v for v in list(ds.variables())[num_ignore:] if v.index in selected]
+    if num_ignore:
+        select_index -= set(range(num_ignore))
+
+    return [ds.variable(index) for index in sorted(select_index)]
 
 def get_zones(ds, select=None, ignore=None, num_ignore=0):
     ''' Return list of zone objects matching specified patterns
@@ -66,19 +68,21 @@ def get_zones(ds, select=None, ignore=None, num_ignore=0):
         Returns:
             List of Zones that match patterns
     '''
-    if not select or isinstance(select,str):
+    if not isinstance(select,list):
         select = [select]
 
-    selected = set()
+    select_index = set()
+
     for s in select:
-        selected |= set(z.index for z in ds.zones(s))
+        select_index |= set(z.index for z in ds.zones(s))
 
     if ignore:
-        selected -= set(z.index for z in get_zones(ds, select=ignore))
+        select_index -= set(z.index for z in get_zones(ds, select=ignore))
 
-    # Return *ordered* output list
-    assert selected, f"get_zones: No matching zones in dataset"
-    return [z for z in list(ds.zones())[num_ignore:] if z.index in selected]
+    if num_ignore:
+        select_index -= set(range(num_ignore))
+
+    return [ds.zone(index) for index in sorted(select_index)]
 
 def rescale_frame(frame, num_contour):
     ''' Rescale 1st colormap for 2D and 3D plots, 1st xy-axes for XY plots '''
@@ -142,7 +146,9 @@ def write_dataset(filename, dataset, **kwargs):
 #-----------------------------------------------------------------------
 # API Functions
 #-----------------------------------------------------------------------
-def compute_statistics(datafile_in, select_vars=None, ignore_vars=None, select_zones=None, ignore_zones=None):
+def compute_statistics(datafile_in, *,
+                       select_vars=None, ignore_vars=None,
+                       select_zones=None, ignore_zones=None):
     ''' Compute min/max/mean for each variable/zone combination
 
     Arguments:
@@ -187,8 +193,9 @@ def compute_statistics(datafile_in, select_vars=None, ignore_vars=None, select_z
 
     return var_stats
 
-def difference_datasets(datafile_new, datafile_old, datafile_out, nskip=3,
-                        select_vars=None, ignore_vars=None, select_zones=None, ignore_zones=None):
+def difference_datasets(datafile_new, datafile_old, datafile_out, *, nskip=3,
+                        select_vars=None, ignore_vars=None,
+                        select_zones=None, ignore_zones=None):
     ''' Compute variable-by-variable difference between datasets.
 
         INPUTS:
@@ -220,10 +227,9 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, nskip=3,
         var_old = get_variables(data_old, select_vars, ignore_vars, nskip)
         if len(var_new) != len(var_old):
             message = (
-                "The number of variables matching the glob pattern "
-                "'{}' in datafile_new ({}) does not match the number "
-                "in datafile_old ({})."
-            ).format(var_pattern, len(var_new), len(var_old))
+                "The number of variables matching select_vars={} and ignore_vars={} "
+                "in datafile_new ({}) does not match the number in datafile_old ({})."
+            ).format(select_vars, ignore_vars, len(var_new), len(var_old))
             LOG.error(message)
             raise RuntimeError(message)
         for i, (vnew, vold) in enumerate(zip(var_new, var_old)):
@@ -238,10 +244,9 @@ def difference_datasets(datafile_new, datafile_old, datafile_out, nskip=3,
         zone_old = get_zones(data_old, select_zones, ignore_zones)
         if len(zone_new) != len(zone_old):
             message = (
-                "The number of zones matching the glob pattern "
-                "'{}' in datafile_new ({}) does not match the number "
-                "in datafile_old ({})."
-            ).format(zone_pattern, len(zone_new), len(zone_old))
+                "The number of zones matching select_zones={} and ignore_zones={} "
+                "in datafile_new ({}) does not match the number in datafile_old ({})."
+            ).format(select_zones, ignore_zones, len(zone_new), len(zone_old))
             LOG.error(message)
             raise RuntimeError(message)
         for i, (znew, zold) in enumerate(zip(zone_new, zone_old)):
@@ -297,7 +302,8 @@ def export_pages(output_dir, prefix='', width=600, supersample=2,
             supersample = supersample
         )
 
-def extract(datafile_in, datafile_out, select_vars=None, ignore_vars=None, select_zones=None, ignore_zones=None):
+def extract(datafile_in, datafile_out, *,
+            select_vars=None, ignore_vars=None, select_zones=None, ignore_zones=None):
     ''' Copy specified zones/variables into a new file
 
     Arguments:
@@ -373,16 +379,20 @@ def interpolate_dataset(datafile_src, datafile_tgt, datafile_out):
         # Save results
         write_dataset(datafile_out, data, zones=tgt_zones)
 
-def merge_datasets(datafile1, datafile2, datafile_out,
-                   select_vars1=None, ignore_vars1=None, select_vars2=None, ignore_vars2=None):
+def merge_datasets(datafile1, datafile2, datafile_out,*,
+                   select_vars1=None, ignore_vars1=None, num_ignore_vars1=None,
+                   select_vars2=None, ignore_vars2=None, num_ignore_vars2=None,
+                   warn_duplicates=True):
     ''' Merge variables from point-matched datasets into one dataset
 
         INPUTS:
-            datafile1     Path to 1st dataset to merge
-            datafile2     Path to 2nd dataset to merge
-            datafile_out  Path where merged dataset is saved
-            select_vars?  [list(str)] Name patterns of variables to retain (def: all)
-            ignore_vars?  [list(str)] Name patterns of variables to ignore (def: none)
+            datafile1         Path to 1st dataset to merge
+            datafile2         Path to 2nd dataset to merge
+            datafile_out      Path where merged dataset is saved
+            select_vars?      [list(str)] Name patterns of variables to retain (def: all)
+            ignore_vars?      [list(str)] Name patterns of variables to ignore (def: none)
+            num_ignore_vars?  [int] Ignore first N variables in file (def: 0)
+            warn_duplicates   [bool] Warn if same variable name in both datasets (def: True)
 
         OUTPUTS:
             none
@@ -418,16 +428,20 @@ def merge_datasets(datafile1, datafile2, datafile_out,
                    f'Cannot merge {z1.name}, {z2.name}: zone size mismatch'
 
         # Select variables for final dataset
-        vars1 = get_variables(data1, select_vars1, ignore_vars1)
-        vars2 = get_variables(data2, select_vars2, ignore_vars2)
+        vars1 = get_variables(data1, select_vars1, ignore_vars1, num_ignore_vars1)
+        vars2 = get_variables(data2, select_vars2, ignore_vars2, num_ignore_vars2)
+        vars1_names = [v1.name for v1 in vars1]
+        vars2_names = [v2.name for v2 in vars2]
+        LOG.debug('Variables selected from dataset1: %s', vars1_names)
+        LOG.debug('Variables selected from dataset2: %s', vars2_names)
 
         # Copy data2 variables into data1
         # Overwrites data in data1 if the variable already exists.
         new_vars = []
-        vars1_names = set(v1.name for v1 in vars1)
         for v2 in vars2:
             if v2.name in vars1_names:
-                LOG.info('"%s" exists in both datasets. Using dataset2.', v2.name)
+                if (warn_duplicates):
+                    LOG.warning('Variable "%s" exists in both datasets. Using values from dataset2.', v2.name)
                 v1 = data1.variable(v2.name)
             else:
                 v1 = data1.add_variable(v2.name)
@@ -488,7 +502,7 @@ def rename_zones(datafile_in, datafile_out, name_map):
         # Save results
         write_dataset(datafile_out, dataset)
 
-def revolve_dataset(datafile_in, datafile_out, radial_coord=None, planes=65, angle=180.0, vector_vars=None):
+def revolve_dataset(datafile_in, datafile_out, *, radial_coord=None, planes=65, angle=180.0, vector_vars=None):
     ''' Create a 3D dataset by revolving a 2D dataset. Supports vector quantities.
 
     Arguments:
